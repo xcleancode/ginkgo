@@ -118,26 +118,30 @@ void apply(std::shared_ptr<const CudaExecutor> exec,
 GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE(GKO_DECLARE_DENSE_APPLY_KERNEL);
 
 
-constexpr auto dot_block_size = 256;
+constexpr auto dot_block_size = 512;
 
 
 template <int subwarp_size, typename ValueType>
-__global__ __launch_bounds__(dot_block_size) void partial_dot(
+__global__ __launch_bounds__(dot_block_size) void partial_dot1(
     const ValueType *__restrict__ a, const ValueType *__restrict__ b,
     size_type rows, size_type cols, ValueType *__restrict__ tmp_storage)
 {
+    constexpr auto subwarps_per_block = dot_block_size / subwarp_size;
+    constexpr auto subwarps_per_warp = config::warp_size / subwarp_size;
+    constexpr auto warps_per_block = dot_block_size / config::warp_size;
     // stores the subwarp_size partial sums from each warp, grouped by warp
-    constexpr auto shared_storage =
-        dot_block_size / config::warp_size * subwarp_size;
+    constexpr auto shared_storage = warps_per_block * subwarp_size;
     __shared__ UninitializedArray<ValueType, shared_storage> block_partial;
     const auto subwarp_idx = thread::get_subwarp_id_flat<subwarp_size>();
-    const auto local_warp_idx = threadIdx.x / config::warp_size;
+    const auto warp_id = threadIdx.x / config::warp_size;
+    const auto subwarp_id = threadIdx.x % config::warp_size / subwarp_size;
     const auto subwarp_num = thread::get_subwarp_num_flat<subwarp_size>();
     const auto block = group::this_thread_block();
     const auto warp = group::tiled_partition<config::warp_size>(block);
     ValueType partial{};
     const auto warp_rank = warp.thread_rank();
-    const auto col = warp_rank % subwarp_size;
+    const auto subwarp_rank = warp_rank % subwarp_size;
+    const auto col = subwarp_rank;
     // sum up within a thread
     for (auto row = subwarp_idx; row < rows; row += subwarp_num) {
         if (col < cols) {
@@ -150,17 +154,17 @@ __global__ __launch_bounds__(dot_block_size) void partial_dot(
         partial += warp.shfl_xor(partial, i);
     }
     // store the result to shared memory
-    if (warp_rank < subwarp_size) {
-        block_partial[local_warp_idx * subwarp_size + warp_rank] = partial;
+    if (subwarp_id == 0) {
+        block_partial[warp_id * subwarp_size + subwarp_rank] = partial;
     }
     block.sync();
     // in a single thread: accumulate the results
-    if (local_warp_idx == 0) {
+    if (warp_id == 0) {
         partial = {};
         // accumulate the partial results within a thread
 #pragma unroll
-        for (int i = warp_rank; i < shared_storage; i += config::warp_size) {
-            partial += block_partial[i];
+        for (int i = 0; i < shared_storage; i += config::warp_size) {
+            partial += block_partial[i + warp_rank];
         }
         // accumulate between all subwarps in the warp
 #pragma unroll
@@ -169,6 +173,42 @@ __global__ __launch_bounds__(dot_block_size) void partial_dot(
         }
         if (warp_rank < cols) {
             tmp_storage[warp_rank + blockIdx.x * cols] = partial;
+        }
+    }
+}
+
+
+template <typename ValueType>
+__global__ __launch_bounds__(dot_block_size) void partial_dot2(
+    const ValueType *__restrict__ a, const ValueType *__restrict__ b,
+    size_type rows, size_type cols, ValueType *__restrict__ tmp_storage)
+{
+    __shared__ UninitializedArray<ValueType, dot_block_size> block_partial;
+    const auto warp_id = thread::get_subwarp_id_flat<config::warp_size>();
+    const auto warp_num = thread::get_subwarp_num_flat<config::warp_size>();
+    const auto block = group::this_thread_block();
+    const auto warp = group::tiled_partition<config::warp_size>(block);
+    ValueType partial{};
+    const auto warp_rank = warp.thread_rank();
+    const auto col = warp_rank + blockIdx.y * config::warp_size;
+    // sum up within a thread
+    for (auto row = warp_id; row < rows; row += warp_num) {
+        if (col < cols) {
+            partial += a[row * cols + col] * b[row * cols + col];
+        }
+    }
+    block_partial[threadIdx.x] = partial;
+    block.sync();
+    // in a single thread: accumulate the results
+    if (threadIdx.x < config::warp_size) {
+        partial = {};
+        // accumulate the partial results within a thread
+#pragma unroll
+        for (int i = 0; i < dot_block_size; i += config::warp_size) {
+            partial += block_partial[i + warp_rank];
+        }
+        if (col < cols) {
+            tmp_storage[col + blockIdx.x * cols] = partial;
         }
     }
 }
@@ -203,27 +243,45 @@ void compute_dot_impl(syn::value_list<int, subwarp_size>,
     constexpr auto oversubscription = 16;
     const auto rows = x->get_size()[0];
     const auto cols = x->get_size()[1];
-    const auto size = rows * cols;
     const auto max_blocks = config::warp_size * oversubscription *
                             exec->get_num_warps() / dot_block_size;
-    const auto num_blocks =
-        std::min<int64>(ceildiv(size, dot_block_size), max_blocks);
-    Array<ValueType> tmp_storage{exec, num_blocks * cols};
-    if (num_blocks == 0) {
-        fill(exec, result, zero<ValueType>());
-    } else if (num_blocks == 1) {
-        partial_dot<subwarp_size><<<num_blocks, dot_block_size>>>(
-            as_cuda_type(x->get_const_values()),
-            as_cuda_type(y->get_const_values()), rows, cols,
-            as_cuda_type(result->get_values()));
+    if (cols <= subwarp_size) {
+        const auto num_blocks = std::min<int64>(
+            ceildiv(rows * subwarp_size, dot_block_size), max_blocks);
+        if (num_blocks <= 1) {
+            partial_dot1<subwarp_size><<<1, dot_block_size>>>(
+                as_cuda_type(x->get_const_values()),
+                as_cuda_type(y->get_const_values()), rows, cols,
+                as_cuda_type(result->get_values()));
+        } else {
+            Array<ValueType> tmp_storage{exec, num_blocks * cols};
+            partial_dot1<subwarp_size><<<num_blocks, dot_block_size>>>(
+                as_cuda_type(x->get_const_values()),
+                as_cuda_type(y->get_const_values()), rows, cols,
+                as_cuda_type(tmp_storage.get_data()));
+            finish_dot<<<ceildiv(cols, dot_block_size), dot_block_size>>>(
+                num_blocks, cols, as_cuda_type(tmp_storage.get_const_data()),
+                as_cuda_type(result->get_values()));
+        }
     } else {
-        partial_dot<subwarp_size><<<num_blocks, dot_block_size>>>(
-            as_cuda_type(x->get_const_values()),
-            as_cuda_type(y->get_const_values()), rows, cols,
-            as_cuda_type(tmp_storage.get_data()));
-        finish_dot<<<ceildiv(cols, dot_block_size), dot_block_size>>>(
-            num_blocks, cols, as_cuda_type(tmp_storage.get_const_data()),
-            as_cuda_type(result->get_values()));
+        const auto col_blocks = ceildiv(cols, config::warp_size);
+        const auto row_blocks = ceildiv(std::min<int64>(
+            ceildiv(rows * config::warp_size, dot_block_size), max_blocks), col_blocks);
+        if (row_blocks <= 1) {
+            partial_dot2<<<dim3(1, col_blocks), dot_block_size>>>(
+                as_cuda_type(x->get_const_values()),
+                as_cuda_type(y->get_const_values()), rows, cols,
+                as_cuda_type(result->get_values()));
+        } else {
+            Array<ValueType> tmp_storage{exec, row_blocks * cols};
+            partial_dot2<<<dim3(row_blocks, col_blocks), dot_block_size>>>(
+                as_cuda_type(x->get_const_values()),
+                as_cuda_type(y->get_const_values()), rows, cols,
+                as_cuda_type(tmp_storage.get_data()));
+            finish_dot<<<ceildiv(cols, dot_block_size), dot_block_size>>>(
+                row_blocks, cols, as_cuda_type(tmp_storage.get_const_data()),
+                as_cuda_type(result->get_values()));                
+        }
     }
 }
 
