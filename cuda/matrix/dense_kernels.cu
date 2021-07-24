@@ -44,6 +44,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #include "core/components/prefix_sum.hpp"
+#include "core/synthesizer/implementation_selection.hpp"
 #include "cuda/base/config.hpp"
 #include "cuda/base/cublas_bindings.hpp"
 #include "cuda/base/pointer_mode_guard.hpp"
@@ -117,44 +118,135 @@ void apply(std::shared_ptr<const CudaExecutor> exec,
 GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE(GKO_DECLARE_DENSE_APPLY_KERNEL);
 
 
+constexpr auto dot_block_size = 256;
+
+
+template <int subwarp_size, typename ValueType>
+__global__ __launch_bounds__(dot_block_size) void partial_dot(
+    const ValueType *__restrict__ a, const ValueType *__restrict__ b,
+    size_type rows, size_type cols, ValueType *__restrict__ tmp_storage)
+{
+    // stores the subwarp_size partial sums from each warp, grouped by warp
+    constexpr auto shared_storage =
+        dot_block_size / config::warp_size * subwarp_size;
+    __shared__ UninitializedArray<ValueType, shared_storage> block_partial;
+    const auto subwarp_idx = thread::get_subwarp_id_flat<subwarp_size>();
+    const auto local_warp_idx = threadIdx.x / config::warp_size;
+    const auto subwarp_num = thread::get_subwarp_num_flat<subwarp_size>();
+    const auto block = group::this_thread_block();
+    const auto warp = group::tiled_partition<config::warp_size>(block);
+    ValueType partial{};
+    const auto warp_rank = warp.thread_rank();
+    const auto col = warp_rank % subwarp_size;
+    // sum up within a thread
+    for (auto row = subwarp_idx; row < rows; row += subwarp_num) {
+        if (col < cols) {
+            partial += a[row * cols + col] * b[row * cols + col];
+        }
+    }
+    // accumulate between all subwarps in the warp
+#pragma unroll
+    for (unsigned i = subwarp_size; i < config::warp_size; i *= 2) {
+        partial += warp.shfl_xor(partial, i);
+    }
+    // store the result to shared memory
+    if (warp_rank < subwarp_size) {
+        block_partial[local_warp_idx * subwarp_size + warp_rank] = partial;
+    }
+    block.sync();
+    // in a single thread: accumulate the results
+    if (local_warp_idx == 0) {
+        partial = {};
+        // accumulate the partial results within a thread
+#pragma unroll
+        for (int i = warp_rank; i < shared_storage; i += config::warp_size) {
+            partial += block_partial[i];
+        }
+        // accumulate between all subwarps in the warp
+#pragma unroll
+        for (auto i = subwarp_size; i < config::warp_size; i *= 2) {
+            partial += warp.shfl_xor(partial, i);
+        }
+        if (warp_rank < cols) {
+            tmp_storage[warp_rank + blockIdx.x * cols] = partial;
+        }
+    }
+}
+
+
+template <typename ValueType>
+__global__ void finish_dot(size_type num_blocks, size_type cols,
+                           const ValueType *__restrict__ tmp_storage,
+                           ValueType *__restrict__ result)
+{
+    auto col = thread::get_thread_id_flat();
+    if (col < cols) {
+        ValueType partial{};
+        for (int block = 0; block < num_blocks; block++) {
+            partial += tmp_storage[col + block * cols];
+        }
+        result[col] = partial;
+    }
+}
+
+
+namespace {
+
+
+template <int subwarp_size, typename ValueType>
+void compute_dot_impl(syn::value_list<int, subwarp_size>,
+                      std::shared_ptr<const CudaExecutor> exec,
+                      const matrix::Dense<ValueType> *x,
+                      const matrix::Dense<ValueType> *y,
+                      matrix::Dense<ValueType> *result)
+{
+    constexpr auto oversubscription = 16;
+    const auto rows = x->get_size()[0];
+    const auto cols = x->get_size()[1];
+    const auto size = rows * cols;
+    const auto max_blocks = config::warp_size * oversubscription *
+                            exec->get_num_warps() / dot_block_size;
+    const auto num_blocks =
+        std::min<int64>(ceildiv(size, dot_block_size), max_blocks);
+    Array<ValueType> tmp_storage{exec, num_blocks * cols};
+    if (num_blocks == 0) {
+        fill(exec, result, zero<ValueType>());
+    } else if (num_blocks == 1) {
+        partial_dot<subwarp_size><<<num_blocks, dot_block_size>>>(
+            as_cuda_type(x->get_const_values()),
+            as_cuda_type(y->get_const_values()), rows, cols,
+            as_cuda_type(result->get_values()));
+    } else {
+        partial_dot<subwarp_size><<<num_blocks, dot_block_size>>>(
+            as_cuda_type(x->get_const_values()),
+            as_cuda_type(y->get_const_values()), rows, cols,
+            as_cuda_type(tmp_storage.get_data()));
+        finish_dot<<<ceildiv(cols, dot_block_size), dot_block_size>>>(
+            num_blocks, cols, as_cuda_type(tmp_storage.get_const_data()),
+            as_cuda_type(result->get_values()));
+    }
+}
+
+GKO_ENABLE_IMPLEMENTATION_SELECTION(select_compute_dot, compute_dot_impl);
+
+
+}  // namespace
+
+
 template <typename ValueType>
 void compute_dot(std::shared_ptr<const CudaExecutor> exec,
                  const matrix::Dense<ValueType> *x,
                  const matrix::Dense<ValueType> *y,
                  matrix::Dense<ValueType> *result)
 {
-    if (cublas::is_supported<ValueType>::value) {
-        // TODO: write a custom kernel which does this more efficiently
-        for (size_type col = 0; col < x->get_size()[1]; ++col) {
-            cublas::dot(exec->get_cublas_handle(), x->get_size()[0],
-                        x->get_const_values() + col, x->get_stride(),
-                        y->get_const_values() + col, y->get_stride(),
-                        result->get_values() + col);
-        }
-    } else {
-        // TODO: these are tuning parameters obtained experimentally, once
-        // we decide how to handle this uniformly, they should be modified
-        // appropriately
-        constexpr auto work_per_thread = 32;
-        constexpr auto block_size = 1024;
-
-        constexpr auto work_per_block = work_per_thread * block_size;
-        const dim3 grid_dim = ceildiv(x->get_size()[0], work_per_block);
-        const dim3 block_dim{config::warp_size, 1,
-                             block_size / config::warp_size};
-        Array<ValueType> work(exec, grid_dim.x);
-        // TODO: write a kernel which does this more efficiently
-        for (size_type col = 0; col < x->get_size()[1]; ++col) {
-            kernel::compute_partial_dot<block_size><<<grid_dim, block_dim>>>(
-                x->get_size()[0], as_cuda_type(x->get_const_values() + col),
-                x->get_stride(), as_cuda_type(y->get_const_values() + col),
-                y->get_stride(), as_cuda_type(work.get_data()));
-            kernel::finalize_sum_reduce_computation<block_size>
-                <<<1, block_dim>>>(grid_dim.x,
-                                   as_cuda_type(work.get_const_data()),
-                                   as_cuda_type(result->get_values() + col));
-        }
-    }
+    using kernels = syn::value_list<int, 1, 2, 4, 8, 16, 32, config::warp_size>;
+    select_compute_dot(
+        kernels{},
+        [&](int compiled_subwarp_size) {
+            return compiled_subwarp_size >= x->get_size()[1] ||
+                   compiled_subwarp_size == config::warp_size;
+        },
+        syn::value_list<int>(), syn::type_list<>(), exec, x, y, result);
 }
 
 GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE(GKO_DECLARE_DENSE_COMPUTE_DOT_KERNEL);
