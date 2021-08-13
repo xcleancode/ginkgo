@@ -52,6 +52,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace gko {
 namespace distributed {
 
+enum class data_placement { local, global };
+
 template <typename ValueType = double, typename LocalIndexType = int32>
 class Matrix : public EnableLinOp<Matrix<ValueType, LocalIndexType>>,
                public EnableCreateMethod<Matrix<ValueType, LocalIndexType>>,
@@ -70,12 +72,14 @@ public:
 
     void read_distributed(
         const matrix_data<ValueType, global_index_type>& data,
-        std::shared_ptr<const Partition<local_index_type>> partition);
+        std::shared_ptr<const Partition<local_index_type>> partition,
+        data_placement placement = data_placement::global);
 
     void read_distributed(
         const Array<matrix_data_entry<ValueType, global_index_type>>& data,
         dim<2> size,
-        std::shared_ptr<const Partition<local_index_type>> partition);
+        std::shared_ptr<const Partition<local_index_type>> partition,
+        data_placement placement = data_placement::global);
 
     void validate_data() const override;
 

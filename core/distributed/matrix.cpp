@@ -75,7 +75,8 @@ Matrix<ValueType, LocalIndexType>::Matrix(
 template <typename ValueType, typename LocalIndexType>
 void Matrix<ValueType, LocalIndexType>::read_distributed(
     const matrix_data<ValueType, global_index_type>& data,
-    std::shared_ptr<const Partition<LocalIndexType>> partition)
+    std::shared_ptr<const Partition<LocalIndexType>> partition,
+    data_placement placement)
 {
     this->read_distributed(
         Array<matrix_data_entry<ValueType, global_index_type>>::view(
@@ -89,7 +90,8 @@ void Matrix<ValueType, LocalIndexType>::read_distributed(
 template <typename ValueType, typename LocalIndexType>
 void Matrix<ValueType, LocalIndexType>::read_distributed(
     const Array<matrix_data_entry<ValueType, global_index_type>>& data,
-    dim<2> size, std::shared_ptr<const Partition<LocalIndexType>> partition)
+    dim<2> size, std::shared_ptr<const Partition<LocalIndexType>> partition,
+    data_placement placement)
 {
     this->partition_ = partition;
     const auto comm = this->get_communicator();
