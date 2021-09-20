@@ -141,6 +141,38 @@ TEST(MatrixData, InitializesColumnVectorFromValueList)
 }
 
 
+TEST(MatrixData, InitializesFromNonzeroVectorArrays)
+{
+    using nnz = gko::matrix_data<double, int>::nonzero_type;
+    auto row_vec = std::vector<int>{0, 1, 2};
+    auto col_vec = std::vector<int>{0, 1, 3};
+    auto nnz_vec = std::vector<double>{2.0, 0.0, 5.0};
+    gko::matrix_data<double, int> m(gko::dim<2>{5, 7}, row_vec, col_vec,
+                                    nnz_vec);
+
+    ASSERT_EQ(m.size, gko::dim<2>(5, 7));
+    ASSERT_EQ(m.nonzeros.size(), 3);
+    EXPECT_EQ(m.nonzeros[0], nnz(0, 0, 2.0));
+    EXPECT_EQ(m.nonzeros[1], nnz(1, 1, 0.0));
+    EXPECT_EQ(m.nonzeros[2], nnz(2, 3, 5.0));
+}
+
+
+TEST(MatrixData, InitializesFromVectorNonzeroList)
+{
+    using nnz = gko::matrix_data<double, int>::nonzero_type;
+    auto data_vec = std::vector<std::tuple<int, int, double>>{
+        {0, 0, 2.0}, {1, 1, 0.0}, {2, 3, 5.0}};
+    gko::matrix_data<double, int> m(gko::dim<2>{5, 7}, data_vec);
+
+    ASSERT_EQ(m.size, gko::dim<2>(5, 7));
+    ASSERT_EQ(m.nonzeros.size(), 3);
+    EXPECT_EQ(m.nonzeros[0], nnz(0, 0, 2.0));
+    EXPECT_EQ(m.nonzeros[1], nnz(1, 1, 0.0));
+    EXPECT_EQ(m.nonzeros[2], nnz(2, 3, 5.0));
+}
+
+
 TEST(MatrixData, InitializesFromNonzeroList)
 {
     using nnz = gko::matrix_data<double, int>::nonzero_type;

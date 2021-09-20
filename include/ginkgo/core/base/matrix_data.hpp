@@ -218,6 +218,45 @@ struct matrix_data {
     }
 
     /**
+     * Initializes the structure from a vector of nonzeros.
+     *
+     * @param size_  dimensions of the matrix
+     * @param nonzeros_  list of nonzero elements
+     */
+    matrix_data(
+        dim<2> size_,
+        std::vector<std::tuple<IndexType, IndexType, ValueType>> nonzeros_)
+        : size{size_}, nonzeros()
+    {
+        nonzeros.reserve(nonzeros_.size());
+        for (const auto& elem : nonzeros_) {
+            nonzeros.emplace_back(std::get<0>(elem), std::get<1>(elem),
+                                  std::get<2>(elem));
+        }
+        this->ensure_row_major_order();
+    }
+
+    /**
+     * Initializes the structure from a list of nonzeros.
+     *
+     * @param size_  dimensions of the matrix
+     * @param nonzeros_  list of nonzero elements
+     */
+    matrix_data(dim<2> size_, std::vector<IndexType> row_vec_,
+                std::vector<IndexType> col_vec_,
+                std::vector<ValueType> nnz_vec_)
+        : size{size_}, nonzeros()
+    {
+        GKO_ASSERT(col_vec_.size() == row_vec_.size());
+        GKO_ASSERT(row_vec_.size() == nnz_vec_.size());
+        nonzeros.reserve(nnz_vec_.size());
+        for (size_type i = 0; i < nnz_vec_.size(); ++i) {
+            nonzeros.emplace_back(row_vec_[i], col_vec_[i], nnz_vec_[i]);
+        }
+        this->ensure_row_major_order();
+    }
+
+    /**
      * Initializes a matrix out of a matrix block via duplication.
      *
      * @param size  size of the block-matrix (in blocks)
