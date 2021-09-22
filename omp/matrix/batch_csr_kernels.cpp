@@ -63,9 +63,9 @@ namespace batch_csr {
 
 template <typename ValueType, typename IndexType>
 void spmv(std::shared_ptr<const OmpExecutor> exec,
-          const matrix::BatchCsr<ValueType, IndexType> *a,
-          const matrix::BatchDense<ValueType> *b,
-          matrix::BatchDense<ValueType> *c)
+          const matrix::BatchCsr<ValueType, IndexType>* a,
+          const matrix::BatchDense<ValueType>* b,
+          matrix::BatchDense<ValueType>* c)
 {
     const auto a_ub = host::get_batch_struct(a);
     const auto b_ub = host::get_batch_struct(b);
@@ -86,11 +86,11 @@ GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_AND_INT32_INDEX(
 
 template <typename ValueType, typename IndexType>
 void advanced_spmv(std::shared_ptr<const OmpExecutor> exec,
-                   const matrix::BatchDense<ValueType> *alpha,
-                   const matrix::BatchCsr<ValueType, IndexType> *a,
-                   const matrix::BatchDense<ValueType> *b,
-                   const matrix::BatchDense<ValueType> *beta,
-                   matrix::BatchDense<ValueType> *c)
+                   const matrix::BatchDense<ValueType>* alpha,
+                   const matrix::BatchCsr<ValueType, IndexType>* a,
+                   const matrix::BatchDense<ValueType>* b,
+                   const matrix::BatchDense<ValueType>* beta,
+                   matrix::BatchDense<ValueType>* c)
 {
     const auto a_ub = host::get_batch_struct(a);
     const auto b_ub = host::get_batch_struct(b);
@@ -115,9 +115,9 @@ GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_AND_INT32_INDEX(
 
 template <typename ValueType, typename IndexType>
 void batch_scale(std::shared_ptr<const OmpExecutor> exec,
-                 const matrix::BatchDense<ValueType> *left_scale,
-                 const matrix::BatchDense<ValueType> *right_scale,
-                 matrix::BatchCsr<ValueType, IndexType> *mat)
+                 const matrix::BatchDense<ValueType>* left_scale,
+                 const matrix::BatchDense<ValueType>* right_scale,
+                 matrix::BatchCsr<ValueType, IndexType>* mat)
 {
     if (!left_scale->get_size().stores_equal_sizes()) GKO_NOT_IMPLEMENTED;
     if (!right_scale->get_size().stores_equal_sizes()) GKO_NOT_IMPLEMENTED;
@@ -143,10 +143,10 @@ GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_AND_INT32_INDEX(
 template <typename ValueType, typename IndexType>
 void pre_diag_scale_system(
     std::shared_ptr<const OmpExecutor> exec,
-    const matrix::BatchDense<ValueType> *const left_scale,
-    const matrix::BatchDense<ValueType> *const right_scale,
-    matrix::BatchCsr<ValueType, IndexType> *const a,
-    matrix::BatchDense<ValueType> *const b)
+    const matrix::BatchDense<ValueType>* const left_scale,
+    const matrix::BatchDense<ValueType>* const right_scale,
+    matrix::BatchCsr<ValueType, IndexType>* const a,
+    matrix::BatchDense<ValueType>* const b)
 {
     const size_type nbatch = a->get_num_batch_entries();
     const int nrows = static_cast<int>(a->get_size().at()[0]);
@@ -168,14 +168,14 @@ GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_AND_INT32_INDEX(
 
 template <typename IndexType>
 void convert_row_ptrs_to_idxs(std::shared_ptr<const OmpExecutor> exec,
-                              const IndexType *ptrs, size_type num_rows,
-                              IndexType *idxs) GKO_NOT_IMPLEMENTED;
+                              const IndexType* ptrs, size_type num_rows,
+                              IndexType* idxs) GKO_NOT_IMPLEMENTED;
 
 
 template <typename ValueType, typename IndexType>
 void convert_to_dense(std::shared_ptr<const OmpExecutor> exec,
-                      const matrix::BatchCsr<ValueType, IndexType> *source,
-                      matrix::BatchDense<ValueType> *result)
+                      const matrix::BatchCsr<ValueType, IndexType>* source,
+                      matrix::BatchDense<ValueType>* result)
     GKO_NOT_IMPLEMENTED;
 
 GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_AND_INT32_INDEX(
@@ -184,22 +184,33 @@ GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_AND_INT32_INDEX(
 
 template <typename ValueType, typename IndexType, typename UnaryOperator>
 inline void convert_batch_csr_to_csc(
-    size_type num_rows, const IndexType *row_ptrs, const IndexType *col_idxs,
-    const ValueType *batch_csr_vals, IndexType *row_idxs, IndexType *col_ptrs,
-    ValueType *csc_vals, UnaryOperator op) GKO_NOT_IMPLEMENTED;
+    size_type num_rows, const IndexType* row_ptrs, const IndexType* col_idxs,
+    const ValueType* batch_csr_vals, IndexType* row_idxs, IndexType* col_ptrs,
+    ValueType* csc_vals, UnaryOperator op) GKO_NOT_IMPLEMENTED;
+
+
+template <typename ValueType, typename IndexType>
+void convert_csc_to_csr(std::shared_ptr<const DefaultExecutor> exec,
+                        matrix::BatchCsr<ValueType, IndexType>* result_csr,
+                        const ValueType* const csc_vals,
+                        const IndexType* const row_idxs,
+                        const IndexType* const col_idxs) GKO_NOT_IMPLEMENTED;
+
+GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_AND_INT32_INDEX(
+    GKO_DECLARE_BATCH_CSR_FROM_BATCH_CSC_KERNEL);
 
 
 template <typename ValueType, typename IndexType, typename UnaryOperator>
 void transpose_and_transform(std::shared_ptr<const OmpExecutor> exec,
-                             matrix::BatchCsr<ValueType, IndexType> *trans,
-                             const matrix::BatchCsr<ValueType, IndexType> *orig,
+                             matrix::BatchCsr<ValueType, IndexType>* trans,
+                             const matrix::BatchCsr<ValueType, IndexType>* orig,
                              UnaryOperator op) GKO_NOT_IMPLEMENTED;
 
 
 template <typename ValueType, typename IndexType>
 void transpose(std::shared_ptr<const OmpExecutor> exec,
-               const matrix::BatchCsr<ValueType, IndexType> *orig,
-               matrix::BatchCsr<ValueType, IndexType> *trans)
+               const matrix::BatchCsr<ValueType, IndexType>* orig,
+               matrix::BatchCsr<ValueType, IndexType>* trans)
     GKO_NOT_IMPLEMENTED;
 
 GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_AND_INT32_INDEX(
@@ -208,8 +219,8 @@ GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_AND_INT32_INDEX(
 
 template <typename ValueType, typename IndexType>
 void conj_transpose(std::shared_ptr<const OmpExecutor> exec,
-                    const matrix::BatchCsr<ValueType, IndexType> *orig,
-                    matrix::BatchCsr<ValueType, IndexType> *trans)
+                    const matrix::BatchCsr<ValueType, IndexType>* orig,
+                    matrix::BatchCsr<ValueType, IndexType>* trans)
     GKO_NOT_IMPLEMENTED;
 
 GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_AND_INT32_INDEX(
@@ -218,8 +229,8 @@ GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_AND_INT32_INDEX(
 
 template <typename ValueType, typename IndexType>
 void calculate_total_cols(std::shared_ptr<const OmpExecutor> exec,
-                          const matrix::BatchCsr<ValueType, IndexType> *source,
-                          size_type *result, size_type stride_factor,
+                          const matrix::BatchCsr<ValueType, IndexType>* source,
+                          size_type* result, size_type stride_factor,
                           size_type slice_size) GKO_NOT_IMPLEMENTED;
 
 GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_AND_INT32_INDEX(
@@ -229,8 +240,8 @@ GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_AND_INT32_INDEX(
 template <typename ValueType, typename IndexType>
 void calculate_max_nnz_per_row(
     std::shared_ptr<const OmpExecutor> exec,
-    const matrix::BatchCsr<ValueType, IndexType> *source,
-    size_type *result) GKO_NOT_IMPLEMENTED;
+    const matrix::BatchCsr<ValueType, IndexType>* source,
+    size_type* result) GKO_NOT_IMPLEMENTED;
 
 GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_AND_INT32_INDEX(
     GKO_DECLARE_BATCH_CSR_CALCULATE_MAX_NNZ_PER_ROW_KERNEL);
@@ -239,8 +250,8 @@ GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_AND_INT32_INDEX(
 template <typename ValueType, typename IndexType>
 void calculate_nonzeros_per_row(
     std::shared_ptr<const OmpExecutor> exec,
-    const matrix::BatchCsr<ValueType, IndexType> *source,
-    Array<size_type> *result) GKO_NOT_IMPLEMENTED;
+    const matrix::BatchCsr<ValueType, IndexType>* source,
+    Array<size_type>* result) GKO_NOT_IMPLEMENTED;
 
 GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_AND_INT32_INDEX(
     GKO_DECLARE_BATCH_CSR_CALCULATE_NONZEROS_PER_ROW_KERNEL);
@@ -248,7 +259,7 @@ GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_AND_INT32_INDEX(
 
 template <typename ValueType, typename IndexType>
 void sort_by_column_index(std::shared_ptr<const OmpExecutor> exec,
-                          matrix::BatchCsr<ValueType, IndexType> *to_sort)
+                          matrix::BatchCsr<ValueType, IndexType>* to_sort)
     GKO_NOT_IMPLEMENTED;
 
 GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_AND_INT32_INDEX(
@@ -258,8 +269,8 @@ GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_AND_INT32_INDEX(
 template <typename ValueType, typename IndexType>
 void is_sorted_by_column_index(
     std::shared_ptr<const OmpExecutor> exec,
-    const matrix::BatchCsr<ValueType, IndexType> *to_check,
-    bool *is_sorted) GKO_NOT_IMPLEMENTED;
+    const matrix::BatchCsr<ValueType, IndexType>* to_check,
+    bool* is_sorted) GKO_NOT_IMPLEMENTED;
 
 GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_AND_INT32_INDEX(
     GKO_DECLARE_BATCH_CSR_IS_SORTED_BY_COLUMN_INDEX);
@@ -268,8 +279,8 @@ GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_AND_INT32_INDEX(
 template <typename ValueType, typename IndexType>
 void convert_to_batch_dense(
     std::shared_ptr<const OmpExecutor> exec,
-    const matrix::BatchCsr<ValueType, IndexType> *const src,
-    matrix::BatchDense<ValueType> *const dest)
+    const matrix::BatchCsr<ValueType, IndexType>* const src,
+    matrix::BatchDense<ValueType>* const dest)
 {
     const size_type nbatches = src->get_num_batch_entries();
     const int nrows = src->get_size().at()[0];

@@ -131,6 +131,17 @@ void convert_row_ptrs_to_idxs(std::shared_ptr<const HipExecutor> exec,
 
 
 template <typename ValueType, typename IndexType>
+void convert_csc_to_csr(std::shared_ptr<const HipExecutor> exec,
+                        matrix::BatchCsr<ValueType, IndexType>* result_csr,
+                        const ValueType* const csc_vals,
+                        const IndexType* const row_idxs,
+                        const IndexType* const col_idxs) GKO_NOT_IMPLEMENTED;
+
+GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_AND_INT32_INDEX(
+    GKO_DECLARE_BATCH_CSR_FROM_BATCH_CSC_KERNEL);
+
+
+template <typename ValueType, typename IndexType>
 void convert_to_dense(std::shared_ptr<const HipExecutor> exec,
                       const matrix::BatchCsr<ValueType, IndexType>* source,
                       matrix::BatchDense<ValueType>* result)
