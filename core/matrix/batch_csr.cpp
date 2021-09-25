@@ -138,12 +138,15 @@ void BatchCsr<ValueType, IndexType>::move_to(
 template <typename ValueType, typename IndexType>
 void BatchCsr<ValueType, IndexType>::create_from_batch_csc_impl(
     const gko::Array<ValueType>& values, const gko::Array<IndexType>& row_idxs,
-    const gko::Array<IndexType>& col_ptrs)
+    const gko::Array<IndexType>& col_ptrs, bool is_sorted)
 {
     auto exec = this->get_executor();
     exec->run(batch_csr::make_convert_csc_to_csr(this, values.get_const_data(),
                                                  row_idxs.get_const_data(),
                                                  col_ptrs.get_const_data()));
+    if (!is_sorted) {
+        this->sort_by_column_index();
+    }
 }
 
 
@@ -255,22 +258,21 @@ std::unique_ptr<BatchLinOp> BatchCsr<ValueType, IndexType>::conj_transpose()
 
 
 template <typename ValueType, typename IndexType>
-void BatchCsr<ValueType, IndexType>::sort_by_column_index() GKO_NOT_IMPLEMENTED;
-//{
-//    auto exec = this->get_executor();
-//    exec->run(batch_csr::make_sort_by_column_index(this));
-//}
+void BatchCsr<ValueType, IndexType>::sort_by_column_index()
+{
+    auto exec = this->get_executor();
+    exec->run(batch_csr::make_sort_by_column_index(this));
+}
 
 
 template <typename ValueType, typename IndexType>
 bool BatchCsr<ValueType, IndexType>::is_sorted_by_column_index() const
-    GKO_NOT_IMPLEMENTED;
-//{
-//    auto exec = this->get_executor();
-//    bool is_sorted;
-//    exec->run(batch_csr::make_is_sorted_by_column_index(this, &is_sorted));
-//    return is_sorted;
-//}
+{
+    auto exec = this->get_executor();
+    bool is_sorted;
+    exec->run(batch_csr::make_is_sorted_by_column_index(this, &is_sorted));
+    return is_sorted;
+}
 
 
 template <typename ValueType, typename IndexType>

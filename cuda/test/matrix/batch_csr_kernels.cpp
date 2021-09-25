@@ -227,6 +227,31 @@ TEST_F(BatchCsr, AdvancedComplexApplyIsEquivalentToRef)
 }
 
 
+TEST_F(BatchCsr, CanCheckForUnsortedMatrices)
+{
+    /**
+     * 1 2
+     * 0 3
+     * 4 0
+     *
+     * -1 12
+     * 0 13
+     * 14 0
+     */
+    value_type csr_values[] = {2.0, 1.0, 3.0, 4.0, -1.0, 12.0, 213.0, 14.0};
+    index_type col_idxs[] = {1, 0, 1, 0};
+    index_type row_ptrs[] = {0, 2, 3, 4};
+
+    auto comp = gko::matrix::BatchCsr<value_type, index_type>::create(
+        cuda->get_master(), 2, gko::dim<2>{3, 2},
+        gko::Array<value_type>::view(cuda->get_master(), 8, csr_values),
+        gko::Array<index_type>::view(cuda->get_master(), 4, col_idxs),
+        gko::Array<index_type>::view(cuda->get_master(), 4, row_ptrs));
+
+    ASSERT_EQ(comp->is_sorted_by_column_index(), false);
+}
+
+
 TEST_F(BatchCsr, CanBeCreatedFromExistingCscData)
 {
     /**
@@ -259,6 +284,7 @@ TEST_F(BatchCsr, CanBeCreatedFromExistingCscData)
         gko::Array<index_type>::view(cuda->get_master(), 4, col_idxs),
         gko::Array<index_type>::view(cuda->get_master(), 4, row_ptrs));
 
+    ASSERT_EQ(mtx->is_sorted_by_column_index(), true);
     GKO_ASSERT_BATCH_MTX_NEAR(comp.get(), host_mat.get(), 0.0);
 }
 

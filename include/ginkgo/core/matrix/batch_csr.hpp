@@ -128,7 +128,7 @@ public:
         std::shared_ptr<const Executor> exec, const size_type num_batch_entries,
         const dim<2>& size, const gko::Array<ValueType>& values,
         const gko::Array<IndexType>& row_idxs,
-        const gko::Array<IndexType>& col_ptrs)
+        const gko::Array<IndexType>& col_ptrs, bool is_sorted = false)
     {
         GKO_ASSERT_EQ(values.get_num_elems(),
                       row_idxs.get_num_elems() * num_batch_entries);
@@ -137,7 +137,8 @@ public:
         auto batch_csr_mat = BatchCsr<ValueType, IndexType>::create(
             exec, num_batch_entries, size, row_idxs.get_num_elems());
 
-        batch_csr_mat->create_from_batch_csc_impl(values, row_idxs, col_ptrs);
+        batch_csr_mat->create_from_batch_csc_impl(values, row_idxs, col_ptrs,
+                                                  is_sorted);
         return batch_csr_mat;
     }
 
@@ -394,7 +395,8 @@ protected:
 
     void create_from_batch_csc_impl(const gko::Array<ValueType>& values,
                                     const gko::Array<IndexType>& row_idxs,
-                                    const gko::Array<IndexType>& col_ptrs);
+                                    const gko::Array<IndexType>& col_ptrs,
+                                    bool is_sorted);
 
     void apply_impl(const BatchLinOp* b, BatchLinOp* x) const override;
 

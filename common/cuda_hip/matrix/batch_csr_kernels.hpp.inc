@@ -403,6 +403,36 @@ __global__
 }
 
 
+template <typename IndexType>
+__global__ __launch_bounds__(default_block_size) void check_unsorted(
+    const IndexType* __restrict__ row_ptrs,
+    const IndexType* __restrict__ col_idxs, IndexType num_rows, bool* flag)
+{
+    __shared__ bool sh_flag;
+    auto block = group::this_thread_block();
+    if (block.thread_rank() == 0) {
+        sh_flag = *flag;
+    }
+    block.sync();
+
+    auto row = thread::get_thread_id_flat<IndexType>();
+    if (row >= num_rows) {
+        return;
+    }
+
+    // fail early
+    if (sh_flag) {
+        for (auto nz = row_ptrs[row]; nz < row_ptrs[row + 1] - 1; ++nz) {
+            if (col_idxs[nz] > col_idxs[nz + 1]) {
+                *flag = false;
+                sh_flag = false;
+                return;
+            }
+        }
+    }
+}
+
+
 template <typename ValueType>
 __device__ __forceinline__ void batch_scale(
     const ValueType* const left_scale, const ValueType* const right_scale,

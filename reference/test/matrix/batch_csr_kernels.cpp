@@ -454,8 +454,8 @@ TYPED_TEST(BatchCsr, CanBeCreatedFromExistingCscData)
      * 0 13
      * 14 0
      */
-    value_type csc_values[] = {1.0, 4.0, 2.0, 3.0, -1.0, 14.0, 12.0, 13.0};
-    index_type row_idxs[] = {0, 2, 0, 1};
+    value_type csc_values[] = {4.0, 1.0, 2.0, 3.0, 14.0, -1.0, 12.0, 13.0};
+    index_type row_idxs[] = {2, 0, 0, 1};
     index_type col_ptrs[] = {0, 2, 4};
     value_type csr_values[] = {1.0, 2.0, 3.0, 4.0, -1.0, 12.0, 13.0, 14.0};
     index_type col_idxs[] = {0, 1, 1, 0};
@@ -472,6 +472,75 @@ TYPED_TEST(BatchCsr, CanBeCreatedFromExistingCscData)
         this->exec, 2, gko::dim<2>{3, 2},
         gko::Array<value_type>::view(this->exec, 8, csr_values),
         gko::Array<index_type>::view(this->exec, 4, col_idxs),
+        gko::Array<index_type>::view(this->exec, 4, row_ptrs));
+
+    GKO_ASSERT_BATCH_MTX_NEAR(comp.get(), mtx.get(), 0.0);
+}
+
+
+TYPED_TEST(BatchCsr, CanCheckForUnSortedMatrices)
+{
+    using Mtx = typename TestFixture::Mtx;
+    using value_type = typename TestFixture::value_type;
+    using index_type = typename TestFixture::index_type;
+    /**
+     * 1 2 0
+     * 4 0 3
+     * 0 5 6
+     *
+     * -1 12 0
+     * 14 0 32
+     * 0 13 -24
+     */
+    value_type csr_values[] = {1.0,  2.0,  3.0,  4.0,  5.0,  6.0,
+                               -1.0, 12.0, 14.0, 32.0, 13.0, -24.0};
+    index_type col_idxs[] = {0, 1, 2, 0, 1, 2};
+    index_type row_ptrs[] = {0, 2, 4, 6};
+
+    auto comp = gko::matrix::BatchCsr<value_type, index_type>::create(
+        this->exec, 2, gko::dim<2>{3, 3},
+        gko::Array<value_type>::view(this->exec, 12, csr_values),
+        gko::Array<index_type>::view(this->exec, 6, col_idxs),
+        gko::Array<index_type>::view(this->exec, 4, row_ptrs));
+
+    ASSERT_EQ(comp->is_sorted_by_column_index(), false);
+}
+
+
+TYPED_TEST(BatchCsr, CanBeCreatedFromExistingNonSortedCscData)
+{
+    using Mtx = typename TestFixture::Mtx;
+    using value_type = typename TestFixture::value_type;
+    using index_type = typename TestFixture::index_type;
+    /**
+     * 1 2 0
+     * 4 0 3
+     * 0 5 6
+     *
+     * -1 12 0
+     * 14 0 32
+     * 0 13 -24
+     */
+    value_type csc_values[] = {4.0,  1.0,  2.0,  5.0,  6.0,   3.0,
+                               14.0, -1.0, 12.0, 13.0, -24.0, 32.0};
+    index_type row_idxs[] = {1, 0, 0, 2, 2, 1};
+    index_type col_ptrs[] = {0, 2, 4, 6};
+    value_type csr_values[] = {1.0,  2.0,  4.0,  3.0,  5.0,  6.0,
+                               -1.0, 12.0, 14.0, 32.0, 13.0, -24.0};
+    index_type col_idxs[] = {0, 1, 0, 2, 1, 2};
+    index_type row_ptrs[] = {0, 2, 4, 6};
+
+    auto mtx =
+        gko::matrix::BatchCsr<value_type, index_type>::create_from_batch_csc(
+            this->exec, 2, gko::dim<2>{3, 3},
+            gko::Array<value_type>::view(this->exec, 12, csc_values),
+            gko::Array<index_type>::view(this->exec, 6, row_idxs),
+            gko::Array<index_type>::view(this->exec, 4, col_ptrs));
+
+    auto comp = gko::matrix::BatchCsr<value_type, index_type>::create(
+        this->exec, 2, gko::dim<2>{3, 3},
+        gko::Array<value_type>::view(this->exec, 12, csr_values),
+        gko::Array<index_type>::view(this->exec, 6, col_idxs),
         gko::Array<index_type>::view(this->exec, 4, row_ptrs));
 
     GKO_ASSERT_BATCH_MTX_NEAR(comp.get(), mtx.get(), 0.0);

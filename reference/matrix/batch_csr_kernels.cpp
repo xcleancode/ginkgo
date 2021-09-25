@@ -275,7 +275,26 @@ GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_AND_INT32_INDEX(
 template <typename ValueType, typename IndexType>
 void sort_by_column_index(std::shared_ptr<const ReferenceExecutor> exec,
                           matrix::BatchCsr<ValueType, IndexType>* to_sort)
-    GKO_NOT_IMPLEMENTED;
+{
+    auto values = to_sort->get_values();
+    auto row_ptrs = to_sort->get_row_ptrs();
+    auto col_idxs = to_sort->get_col_idxs();
+    const auto num_batch_entries = to_sort->get_num_batch_entries();
+    const auto number_rows = to_sort->get_size().at(0)[0];
+    const auto num_nnz = to_sort->get_row_ptrs()[number_rows];
+    for (size_type i = 0; i < number_rows; ++i) {
+        auto start_row_idx = row_ptrs[i];
+        auto row_nnz = row_ptrs[i + 1] - start_row_idx;
+        size_type offset = 0;
+        for (size_type nb = 0; nb < num_batch_entries; ++nb) {
+            offset = nb * num_nnz;
+            auto helper = detail::IteratorFactory<IndexType, ValueType>(
+                col_idxs + start_row_idx, values + start_row_idx + offset,
+                row_nnz);
+            std::sort(helper.begin(), helper.end());
+        }
+    }
+}
 
 GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_AND_INT32_INDEX(
     GKO_DECLARE_BATCH_CSR_SORT_BY_COLUMN_INDEX);
@@ -284,8 +303,22 @@ GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_AND_INT32_INDEX(
 template <typename ValueType, typename IndexType>
 void is_sorted_by_column_index(
     std::shared_ptr<const ReferenceExecutor> exec,
-    const matrix::BatchCsr<ValueType, IndexType>* to_check,
-    bool* is_sorted) GKO_NOT_IMPLEMENTED;
+    const matrix::BatchCsr<ValueType, IndexType>* to_check, bool* is_sorted)
+{
+    const auto row_ptrs = to_check->get_const_row_ptrs();
+    const auto col_idxs = to_check->get_const_col_idxs();
+    const auto size = to_check->get_size();
+    for (size_type i = 0; i < size.at(0)[0]; ++i) {
+        for (auto idx = row_ptrs[i] + 1; idx < row_ptrs[i + 1]; ++idx) {
+            if (col_idxs[idx - 1] > col_idxs[idx]) {
+                *is_sorted = false;
+                return;
+            }
+        }
+    }
+    *is_sorted = true;
+    return;
+}
 
 GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_AND_INT32_INDEX(
     GKO_DECLARE_BATCH_CSR_IS_SORTED_BY_COLUMN_INDEX);
