@@ -180,7 +180,6 @@ void convert_csc_to_csr(std::shared_ptr<const DefaultExecutor> exec,
 
     row_ptrs[0] = 0;
     convert_idxs_to_ptrs(row_idxs, num_nnz, row_ptrs + 1, num_rows);
-    auto rptr = std::vector<IndexType>(row_ptrs, row_ptrs + num_rows + 1);
 
     for (size_type col = 0; col < num_cols; ++col) {
         for (auto i = col_ptrs[col]; i < col_ptrs[col + 1]; ++i) {

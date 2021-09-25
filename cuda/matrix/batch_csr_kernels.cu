@@ -150,7 +150,78 @@ void convert_csc_to_csr(std::shared_ptr<const DefaultExecutor> exec,
                         matrix::BatchCsr<ValueType, IndexType>* result_csr,
                         const ValueType* const csc_vals,
                         const IndexType* const row_idxs,
-                        const IndexType* const col_idxs) GKO_NOT_IMPLEMENTED;
+                        const IndexType* const col_ptrs)
+{
+    auto num_batch_entries = result_csr->get_num_batch_entries();
+    size_type num_nnz = static_cast<size_type>(
+        result_csr->get_num_stored_elements() / num_batch_entries);
+    size_type num_rows = result_csr->get_size().at(0)[0];
+    size_type num_cols = result_csr->get_size().at(0)[1];
+    auto csr_vals = result_csr->get_values();
+    auto col_idxs = result_csr->get_col_idxs();
+    auto row_ptrs = result_csr->get_row_ptrs();
+    if (cusparse::is_supported<ValueType, IndexType>::value) {
+        const dim3 block_size(default_block_size, 1, 1);
+        const dim3 grid_size(ceildiv(num_nnz, block_size.x), 1, 1);
+
+#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+        cusparseAction_t copyValues = CUSPARSE_ACTION_NUMERIC;
+        cusparseIndexBase_t idxBase = CUSPARSE_INDEX_BASE_ZERO;
+        size_type offset = 0;
+        auto dummy_idx = gko::Array<IndexType>(exec, num_nnz);
+        auto dummy_ptr = gko::Array<IndexType>(exec, num_rows + 1);
+        for (size_type nb = 0; nb < num_batch_entries; ++nb) {
+            offset = nb * num_nnz;
+            if (nb == 0) {
+                cusparse::transpose(exec->get_cusparse_handle(), num_cols,
+                                    num_rows, num_nnz, csc_vals, col_ptrs,
+                                    row_idxs, csr_vals, row_ptrs, col_idxs,
+                                    copyValues, idxBase);
+            } else {
+                cusparse::transpose(exec->get_cusparse_handle(), num_cols,
+                                    num_rows, num_nnz, csc_vals + offset,
+                                    col_ptrs, row_idxs, csr_vals + offset,
+                                    dummy_ptr, dummy_idx, copyValues, idxBase);
+            }
+        }
+#else  // CUDA_VERSION >= 11000
+        cudaDataType_t cu_value =
+            gko::kernels::cuda::cuda_data_type<ValueType>();
+        cusparseAction_t copyValues = CUSPARSE_ACTION_NUMERIC;
+        cusparseIndexBase_t idxBase = CUSPARSE_INDEX_BASE_ZERO;
+        cusparseCsr2CscAlg_t alg = CUSPARSE_CSR2CSC_ALG1;
+        size_type buffer_size = 0;
+        cusparse::transpose_buffersize(
+            exec->get_cusparse_handle(), num_cols, num_rows, num_nnz, csc_vals,
+            col_ptrs, row_idxs, csr_vals, row_ptrs, col_idxs, cu_value,
+            copyValues, idxBase, alg, &buffer_size);
+        Array<char> buffer_array(exec, buffer_size);
+        auto buffer = buffer_array.get_data();
+        size_type offset = 0;
+        auto dummy_idx = gko::Array<IndexType>(exec, num_nnz);
+        auto dummy_ptr = gko::Array<IndexType>(exec, num_rows + 1);
+        for (size_type nb = 0; nb < num_batch_entries; ++nb) {
+            offset = nb * num_nnz;
+            if (nb == 0) {
+                cusparse::transpose(exec->get_cusparse_handle(), num_cols,
+                                    num_rows, num_nnz, csc_vals, col_ptrs,
+                                    row_idxs, csr_vals, row_ptrs, col_idxs,
+                                    cu_value, copyValues, idxBase, alg, buffer);
+            } else {
+                cusparse::transpose(exec->get_cusparse_handle(), num_cols,
+                                    num_rows, num_nnz, csc_vals + offset,
+                                    col_ptrs, row_idxs, csr_vals + offset,
+                                    dummy_ptr.get_data(), dummy_idx.get_data(),
+                                    cu_value, copyValues, idxBase, alg, buffer);
+            }
+        }
+#endif
+    }
+    // const auto num_blocks = exec->get_num_multiprocessor() * sm_multiplier;
+    // update_csr_values<<<num_blocks, default_block_size, num_rows + 1>>>(
+    //     num_batch_entries - 1, num_rows, num_cols, num_nnz, csr_vals +
+    //     num_nnz, csc_vals + num_nnz, col_idxs, row_idxs, col_ptrs, row_ptrs);
+}
 
 GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_AND_INT32_INDEX(
     GKO_DECLARE_BATCH_CSR_FROM_BATCH_CSC_KERNEL);

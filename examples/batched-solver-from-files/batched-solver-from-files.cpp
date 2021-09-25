@@ -112,6 +112,8 @@ int main(int argc, char* argv[])
     // Whether to enable diagonal scaling of the matrices before solving.
     //  The scaling vectors need to be available in a 'S.mtx' file.
     const std::string batch_scaling = argc >= 6 ? argv[5] : "none";
+    const gko::remove_complex<value_type> red_fac =
+        argc >= 7 ? std::atof(argv[6]) : 1e-6;
     auto data = std::vector<gko::matrix_data<value_type>>(num_systems);
     std::vector<gko::matrix_data<value_type>> bdata(num_systems);
     auto scale_data = std::vector<gko::matrix_data<value_type>>(num_systems);
@@ -160,13 +162,13 @@ int main(int argc, char* argv[])
     x->copy_from(host_x.get());
 
     // @sect3{Create the batch solver factory}
-    const real_type reduction_factor{1e-6};
+    const real_type reduction_factor{red_fac};
     // Create a batched solver factory with relevant parameters.
     auto solver_gen =
         solver_type::build()
             .with_max_iterations(500)
             .with_residual_tol(reduction_factor)
-            .with_tolerance_type(gko::stop::batch::ToleranceType::relative)
+            .with_tolerance_type(gko::stop::batch::ToleranceType::absolute)
             .with_preconditioner(gko::preconditioner::batch::type::jacobi)
             // Set the number of intermediate vectors to store in GPU shared
             //  memory rather than global memory. Lower values will enable
@@ -174,7 +176,7 @@ int main(int argc, char* argv[])
             //  larger values will speed up the solve but will only work for
             //  smaller systems.
             // For BiCGStab, 10 is the maximum required.
-            .with_num_shared_vectors(10)
+            .with_num_shared_vectors(6)
             .on(exec);
 
     // @sect3{Batch logger}

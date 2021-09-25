@@ -56,6 +56,7 @@ namespace {
 class BatchCsr : public ::testing::Test {
 protected:
     using value_type = float;
+    using index_type = int;
     using real_type = gko::remove_complex<value_type>;
     using Vec = gko::matrix::BatchDense<value_type>;
     using Mtx = gko::matrix::BatchCsr<value_type>;
@@ -223,6 +224,42 @@ TEST_F(BatchCsr, AdvancedComplexApplyIsEquivalentToRef)
                         dcomplex_y.get());
 
     GKO_ASSERT_BATCH_MTX_NEAR(dcomplex_y, complex_y, eps);
+}
+
+
+TEST_F(BatchCsr, CanBeCreatedFromExistingCscData)
+{
+    /**
+     * 1 2
+     * 0 3
+     * 4 0
+     *
+     * -1 12
+     * 0 13
+     * 14 0
+     */
+    value_type csr_values[] = {1.0, 2.0, 3.0, 4.0, -1.0, 12.0, 213.0, 14.0};
+    index_type col_idxs[] = {0, 1, 1, 0};
+    index_type row_ptrs[] = {0, 2, 3, 4};
+
+    auto dcsc_vals = gko::Array<value_type>(
+        cuda, {1.0, 4.0, 2.0, 3.0, -1.0, 14.0, 12.0, 213.0});
+    auto drow_idxs = gko::Array<index_type>(cuda, {0, 2, 0, 1});
+    auto dcol_ptrs = gko::Array<index_type>(cuda, {0, 2, 4});
+    auto mtx =
+        gko::matrix::BatchCsr<value_type, index_type>::create_from_batch_csc(
+            cuda, 2, gko::dim<2>{3, 2}, dcsc_vals, drow_idxs, dcol_ptrs);
+
+    auto host_mat = gko::matrix::BatchCsr<value_type, index_type>::create(
+        cuda->get_master());
+    host_mat->copy_from(mtx.get());
+    auto comp = gko::matrix::BatchCsr<value_type, index_type>::create(
+        cuda->get_master(), 2, gko::dim<2>{3, 2},
+        gko::Array<value_type>::view(cuda->get_master(), 8, csr_values),
+        gko::Array<index_type>::view(cuda->get_master(), 4, col_idxs),
+        gko::Array<index_type>::view(cuda->get_master(), 4, row_ptrs));
+
+    GKO_ASSERT_BATCH_MTX_NEAR(comp.get(), host_mat.get(), 0.0);
 }
 
 

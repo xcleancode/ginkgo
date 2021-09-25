@@ -373,6 +373,36 @@ __device__ __forceinline__ void batch_scale(
     }
 }
 
+template <typename ValueType, typename IndexType>
+__global__
+    __launch_bounds__(default_block_size, sm_multiplier) void update_csr_values(
+        const size_type num_batch_entries, const size_type num_rows,
+        const size_type num_cols, const size_type num_nnz,
+        ValueType* __restrict__ csr_vals,
+        const ValueType* __restrict__ csc_vals,
+        const IndexType* __restrict__ col_idxs,
+        const IndexType* __restrict__ row_idxs,
+        const IndexType* __restrict__ col_ptrs,
+        const IndexType* __restrict__ row_ptrs)
+{
+    for (size_type ibatch = blockIdx.x; ibatch < num_batch_entries;
+         ibatch += gridDim.x) {
+        extern __shared__ char local_mem_sh[];
+        IndexType* rptr_sh = reinterpret_cast<IndexType*>(local_mem_sh);
+        for (size_type i = 0; i < num_rows + 1; ++i) {
+            rptr_sh[i] = row_ptrs[i];
+        }
+        size_type offset = ibatch * num_nnz;
+        for (size_type col = 0; col < num_cols; ++col) {
+            for (auto i = col_ptrs[col]; i < col_ptrs[col + 1]; ++i) {
+                const auto dest_idx = (rptr_sh)[row_idxs[i]]++;
+                csr_vals[offset + dest_idx] = csc_vals[offset + i];
+            }
+        }
+    }
+}
+
+
 template <typename ValueType>
 __device__ __forceinline__ void batch_scale(
     const ValueType* const left_scale, const ValueType* const right_scale,

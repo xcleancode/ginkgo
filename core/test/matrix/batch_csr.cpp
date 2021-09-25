@@ -239,54 +239,6 @@ TYPED_TEST(BatchCsr, CanBeCreatedFromExistingData)
 }
 
 
-TYPED_TEST(BatchCsr, CanBeCreatedFromExistingCscData)
-{
-    using Mtx = typename TestFixture::Mtx;
-    using value_type = typename TestFixture::value_type;
-    using index_type = typename TestFixture::index_type;
-    /**
-     * 1 2
-     * 0 3
-     * 4 0
-     *
-     * -1 12
-     * 0 13
-     * 14 0
-     */
-    value_type csc_values[] = {1.0, 4.0, 2.0, 3.0, -1.0, 14.0, 12.0, 13.0};
-    index_type row_idxs[] = {0, 2, 0, 1};
-    index_type col_ptrs[] = {0, 2, 4};
-    /**
-     * 1 2
-     * 0 3
-     * 4 0
-     *
-     * -1 12
-     * 0 13
-     * 14 0
-     */
-    value_type csr_values[] = {1.0, 2.0, 3.0, 4.0, -1.0, 12.0, 13.0, 14.0};
-    index_type col_idxs[] = {0, 1, 1, 0};
-    index_type row_ptrs[] = {0, 2, 3, 4};
-
-    auto mtx =
-        gko::matrix::BatchCsr<value_type, index_type>::create_from_batch_csc(
-            this->exec, 2, gko::dim<2>{3, 2},
-            gko::Array<value_type>::view(this->exec, 8, csc_values),
-            gko::Array<index_type>::view(this->exec, 4, row_idxs),
-            gko::Array<index_type>::view(this->exec, 3, col_ptrs));
-    std::cout << " num nnz " << mtx->get_row_ptrs()[3] << std::endl;
-
-    auto comp = gko::matrix::BatchCsr<value_type, index_type>::create(
-        this->exec, 2, gko::dim<2>{3, 2},
-        gko::Array<value_type>::view(this->exec, 8, csr_values),
-        gko::Array<index_type>::view(this->exec, 4, col_idxs),
-        gko::Array<index_type>::view(this->exec, 4, row_ptrs));
-
-    GKO_ASSERT_BATCH_MTX_NEAR(comp.get(), mtx.get(), 0.0);
-}
-
-
 TYPED_TEST(BatchCsr, CanBeCopied)
 {
     using Mtx = typename TestFixture::Mtx;
