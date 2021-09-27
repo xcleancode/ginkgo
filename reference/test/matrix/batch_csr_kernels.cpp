@@ -478,6 +478,44 @@ TYPED_TEST(BatchCsr, CanBeCreatedFromExistingCscData)
 }
 
 
+// TYPED_TEST(BatchCsr, CanSortUnsortedMatrices)
+// {
+//     using value_type = typename TestFixture::value_type;
+//     using index_type = typename TestFixture::index_type;
+//     /**
+//      * 1 2
+//      * 0 3
+//      * 4 0
+//      *
+//      * -1 12
+//      * 0 13
+//      * 14 0
+//      */
+//     auto mtx = gko::matrix::BatchCsr<value_type, index_type>::create(
+//         this->exec, 2, gko::dim<2>{3, 2},
+//         gko::Array<value_type>(this->exec,
+//                                {2.0, 1.0, 3.0, 4.0, 12.0, -1.0,
+//                                213.0, 14.0}),
+//         gko::Array<index_type>(this->exec, {1, 0, 1, 0}),
+//         gko::Array<index_type>(this->exec, {0, 2, 3, 4}));
+
+//     value_type csr_values2[] = {1.0, 2.0, 3.0, 4.0, -1.0, 12.0, 213.0, 14.0};
+//     index_type col_idxs2[] = {0, 1, 1, 0};
+//     index_type row_ptrs2[] = {0, 2, 3, 4};
+
+//     auto comp = gko::matrix::BatchCsr<value_type, index_type>::create(
+//         this->exec, 2, gko::dim<2>{3, 2},
+//         gko::Array<value_type>::view(this->exec, 8, csr_values2),
+//         gko::Array<index_type>::view(this->exec, 4, col_idxs2),
+//         gko::Array<index_type>::view(this->exec, 4, row_ptrs2));
+
+//     ASSERT_EQ(mtx->is_sorted_by_column_index(), false);
+//     mtx->sort_by_column_index();
+//     ASSERT_EQ(mtx->is_sorted_by_column_index(), true);
+//     GKO_ASSERT_BATCH_MTX_NEAR(comp.get(), mtx.get(), 0.0);
+// }
+
+
 TYPED_TEST(BatchCsr, CanCheckForUnSortedMatrices)
 {
     using Mtx = typename TestFixture::Mtx;
@@ -496,6 +534,10 @@ TYPED_TEST(BatchCsr, CanCheckForUnSortedMatrices)
                                -1.0, 12.0, 14.0, 32.0, 13.0, -24.0};
     index_type col_idxs[] = {0, 1, 2, 0, 1, 2};
     index_type row_ptrs[] = {0, 2, 4, 6};
+    value_type csr_values2[] = {1.0,  2.0,  4.0,  3.0,  5.0,  6.0,
+                                -1.0, 12.0, 14.0, 32.0, 13.0, -24.0};
+    index_type col_idxs2[] = {0, 1, 0, 2, 1, 2};
+    index_type row_ptrs2[] = {0, 2, 4, 6};
 
     auto comp = gko::matrix::BatchCsr<value_type, index_type>::create(
         this->exec, 2, gko::dim<2>{3, 3},
@@ -503,7 +545,14 @@ TYPED_TEST(BatchCsr, CanCheckForUnSortedMatrices)
         gko::Array<index_type>::view(this->exec, 6, col_idxs),
         gko::Array<index_type>::view(this->exec, 4, row_ptrs));
 
+    auto comp2 = gko::matrix::BatchCsr<value_type, index_type>::create(
+        this->exec, 2, gko::dim<2>{3, 3},
+        gko::Array<value_type>::view(this->exec, 12, csr_values2),
+        gko::Array<index_type>::view(this->exec, 6, col_idxs2),
+        gko::Array<index_type>::view(this->exec, 4, row_ptrs2));
+
     ASSERT_EQ(comp->is_sorted_by_column_index(), false);
+    ASSERT_EQ(comp2->is_sorted_by_column_index(), true);
 }
 
 
