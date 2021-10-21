@@ -76,9 +76,9 @@ public:
     void move_to(
         Vector<next_precision<ValueType>, LocalIndexType>* result) override;
 
-    void convert_to(matrix::Dense<ValueType>* result) const override;
+    void convert_to(gko::matrix::Dense<ValueType>* result) const override;
 
-    void move_to(matrix::Dense<ValueType>* result) override;
+    void move_to(gko::matrix::Dense<ValueType>* result) override;
 
     /**
      * Fill the distributed vector with a given value.
