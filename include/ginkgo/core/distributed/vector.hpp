@@ -71,6 +71,9 @@ namespace distributed {
  * @note Operations between two vectors (axpy, dot product, etc.) are only valid
  * if both vectors where created using the same partition.
  *
+ * @note Operations between two vectors (axpy, dot product, etc.) are only valid
+ * if both vectors use the same partition.
+ *
  * @tparam ValueType  The precision of vector elements.
  *
  * @ingroup dist_vector
