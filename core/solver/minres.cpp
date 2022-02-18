@@ -1,5 +1,5 @@
 /*******************************<GINKGO LICENSE>******************************
-Copyright (c) 2017-2021, the Ginkgo authors
+Copyright (c) 2017-2022, the Ginkgo authors
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -95,6 +95,19 @@ void Minres<ValueType>::apply_impl(const LinOp* b, LinOp* x) const
 }
 
 
+/**
+ * This Minres implementation is based on Anne Grennbaum's 'Iterative Methods
+ * for Solving Linear Systems' (DOI: 10.1137/1.9781611970937) Ch. 2 and Ch. 8.
+ * Most variable names are taken from that reference, with the exception that
+ * the vector `w` and `w_tilde` from the reference are called `z` and `z_tilde`
+ * here. By reusing already allocated memory the number of necessary vectors is
+ * reduced to The operations are reordered such that the number of kernel
+ * launches can be minimized. Since the dot operations might require global
+ * reductions, they are not grouped together with other steps.
+ * The algorithm uses a recursion to compute an approximate residual norm. The
+ * residual is neither computed exactly, nor approximately, since that would
+ * require additional operations.
+ */
 template <typename ValueType>
 void Minres<ValueType>::apply_dense_impl(
     const matrix::Dense<ValueType>* dense_b,
@@ -111,20 +124,25 @@ void Minres<ValueType>::apply_dense_impl(
     auto neg_one_op = initialize<Vector>({-one<ValueType>()}, exec);
 
     auto r = Vector::create_with_config_of(dense_b);
-    auto z = Vector::create_with_config_of(dense_b);
-    auto p = Vector::create_with_config_of(dense_b);
-    auto q = Vector::create_with_config_of(dense_b);
+    auto z = Vector::create_with_config_of(dense_b);  // z = w_k+1
+    auto p = Vector::create_with_config_of(dense_b);  // p = p_k-1
+    auto q = Vector::create_with_config_of(dense_b);  // q = q_k+1
+    auto v = Vector::create_with_config_of(dense_b);  // v = v_k
 
-    auto z_tilde = Vector::create_with_config_of(dense_b);
-    auto q_tilde = Vector::create_with_config_of(dense_b);
+    auto z_tilde =
+        Vector::create_with_config_of(dense_b);  // z_tilde = w_tilde_k+1
 
-    auto p_prev = Vector::create_with_config_of(p.get());
-    auto q_prev = Vector::create_with_config_of(q.get());
+    auto p_prev = Vector::create_with_config_of(p.get());  // p_prev = p_k-2
+    auto q_prev = Vector::create_with_config_of(q.get());  // q_prev = q_k
 
-    auto alpha = Vector::create(exec, dim<2>{1, dense_b->get_size()[1]});
-    auto beta = Vector::create_with_config_of(alpha.get());
-    auto gamma = Vector::create_with_config_of(alpha.get());
-    auto delta = Vector::create_with_config_of(alpha.get());
+    auto alpha = Vector::create(
+        exec, dim<2>{1, dense_b->get_size()[1]});  // alpha = T(k, k)
+    auto beta = Vector::create_with_config_of(
+        alpha.get());  // beta = T(k + 1, k) = T(k, k + 1)
+    auto gamma =
+        Vector::create_with_config_of(alpha.get());  // gamma = T(k - 1, k)
+    auto delta =
+        Vector::create_with_config_of(alpha.get());  // delta = T(k - 2, k)
     auto eta_next = Vector::create_with_config_of(alpha.get());
     auto eta = Vector::create_with_config_of(alpha.get());
     auto tau = Vector::absolute_type::create(
@@ -141,8 +159,6 @@ void Minres<ValueType>::apply_dense_impl(
                                        dense_b->get_size()[1]);
 
     // r = dense_b
-    // eta = eta_next = norm(dense_b - A * dense_x)
-    // z = p = q = 0
     r = clone(dense_b);
     system_matrix_->apply(neg_one_op.get(), dense_x, one_op.get(), r.get());
     auto stop_criterion = stop_criterion_factory_->generate(
@@ -150,25 +166,32 @@ void Minres<ValueType>::apply_dense_impl(
         std::shared_ptr<const LinOp>(dense_b, [](const LinOp*) {}), dense_x,
         r.get());
 
+    // z = M^-1 * r
+    // beta = <r, z>
+    // tau = ||z||_2
     get_preconditioner()->apply(r.get(), z.get());
     r->compute_conj_dot(z.get(), beta.get());
     z->compute_norm2(tau.get());
 
+    // beta = sqrt(beta)
+    // eta = eta_next = beta
+    // delta = gamma = cos_prev = sin_prev = cos = sin = 0
+    // q = r / beta
+    // z = z / beta
+    // p = p_prev = q_prev = v = 0
     exec->run(minres::make_initialize(
-        r.get(), z.get(), p.get(), p_prev.get(), q.get(), q_prev.get(),
-        q_tilde.get(), beta.get(), gamma.get(), delta.get(), cos_prev.get(),
-        cos.get(), sin_prev.get(), sin.get(), eta_next.get(), eta.get(),
-        &stop_status));
+        r.get(), z.get(), p.get(), p_prev.get(), q.get(), q_prev.get(), v.get(),
+        beta.get(), gamma.get(), delta.get(), cos_prev.get(), cos.get(),
+        sin_prev.get(), sin.get(), eta_next.get(), eta.get(), &stop_status));
 
     int iter = -1;
     /* Memory movement summary:
-     * 18n * values + matrix/preconditioner storage
+     * 27n * values + matrix/preconditioner storage
      * 1x SpMV:           2n * values + storage
      * 1x Preconditioner: 2n * values + storage
      * 2x dot             4n
-     * 1x step 1 (axpy)   3n
-     * 1x step 2 (axpys)  6n
-     * 1x norm2 residual   n
+     * 1x axpy            3n
+     * 1x step 1 (axpys)  16n
      */
     while (true) {
         ++iter;
@@ -183,62 +206,58 @@ void Minres<ValueType>::apply_dense_impl(
             break;
         }
 
-        /**
-         * Lanzcos (partial) update
-         *
-         * q_tilde = A * z - beta * q_prev
-         * alpha = dot(q_tilde, z)
-         * q_tilde = q_tilde - alpha * q
-         * z_tilde = M * q_tilde
-         * beta = dot(q_tilde, z_tilde);
-         *
-         * p and z get updated in step_1
-         */
-        system_matrix_->apply(one_op.get(), z.get(), neg_one_op.get(),
-                              q_tilde.get());
-        q_tilde->compute_conj_dot(z.get(), alpha.get());
-        q_tilde->sub_scaled(alpha.get(), q.get());
-        get_preconditioner()->apply(q_tilde.get(), z_tilde.get());
-        q_tilde->compute_conj_dot(z_tilde.get(), beta.get());
+        // Lanzcos (partial) update
+        //
+        // v = A * z - beta * q_prev
+        // alpha = <v, z>
+        // v = v - alpha * q
+        // z_tilde = M * v
+        // beta = <v, z_tilde>
+        //
+        // p and z get updated in step_1
+        system_matrix_->apply(one_op.get(), z.get(), neg_one_op.get(), v.get());
+        v->compute_conj_dot(z.get(), alpha.get());
+        v->sub_scaled(alpha.get(), q.get());
+        get_preconditioner()->apply(v.get(), z_tilde.get());
+        v->compute_conj_dot(z_tilde.get(), beta.get());
 
-        /**
-         * step 2:
-         * finish lanzcos pt1
-         * beta = sqrt(beta)
-         * q_-1 = q_tilde
-         * q_tmp = q
-         * q = q_tilde / beta
-         * q_tilde = q_tmp * beta
-         *
-         * apply two previous givens rot to new column
-         * delta = s_-1 * gamma  // 0 if iter = 0, 1
-         * tmp_d = gamma
-         * tmp_a = alpha
-         * gamma = c_-1 * c * tmp_d + s * tmp_a  // 0 if iter = 0
-         * alpha = -conj(s) * c_-1 * tmp_d + c * tmp_a
-         *
-         * compute new givens rot
-         * s_-1 = s
-         * c_-1 = c
-         * c, s = givens_rot(alpha, beta)
-         *
-         * apply new givens rot to T and eta
-         * tau = abs(s) * tau
-         * eta = eta_+1
-         * eta_+1 = -conj(s) * eta
-         * alpha = c * alpha + s * beta
-         *
-         * update search direction and solution
-         * swap(p, p_-1)
-         * p = (z - gamma * p_-1 - delta * p) / alpha
-         * x = x + c * eta * p
-         *
-         * finish lanzcos pt2
-         * z = z_tilde / beta  // lanzcos continuation
-         */
+        // step 1:
+        // finish Lanzcos part 1
+        // beta = sqrt(beta)
+        // q_prev = v
+        // q_tmp = q
+        // q = v / beta
+        // v = q_tmp * beta
+        //
+        // apply two previous givens rot to new column
+        // delta = sin_prev * gamma  // 0 if iter = 0, 1
+        // tmp_d = gamma
+        // tmp_a = alpha
+        // gamma = cos_prev * cos * tmp_d + sin * tmp_a  // 0 if iter = 0
+        // alpha = -conj(sin) * cos_prev * tmp_d + cos * tmp_a
+        //
+        // compute new givens rot
+        // sin_prev = sin
+        // cos_prev = cos
+        // cos, sin = givens_rot(alpha, beta)
+        //
+        // apply new givens rot to T and eta
+        // tau = abs(sin) * tau
+        // eta = eta_next
+        // eta_next = -conj(sin) * eta
+        // alpha = cos * alpha + sin * beta
+        //
+        // update search direction and solution
+        // swap(p, p_prev)
+        // p = (z - gamma * p_prev - delta * p) / alpha
+        // x = x + cos * eta * p
+        //
+        // finish Lanzcos part 2
+        // z = z_tilde / beta
+        // gamma = beta
         exec->run(minres::make_step_1(
             dense_x, p.get(), p_prev.get(), z.get(), z_tilde.get(), q.get(),
-            q_prev.get(), q_tilde.get(), alpha.get(), beta.get(), gamma.get(),
+            q_prev.get(), v.get(), alpha.get(), beta.get(), gamma.get(),
             delta.get(), cos_prev.get(), cos.get(), sin_prev.get(), sin.get(),
             eta.get(), eta_next.get(), tau.get(), &stop_status));
     }
