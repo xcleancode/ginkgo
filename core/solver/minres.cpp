@@ -196,10 +196,10 @@ void Minres<ValueType>::apply_dense_impl(
     while (true) {
         ++iter;
         this->template log<log::Logger::iteration_complete>(
-            this, iter, r.get(), dense_x, tau.get(), nullptr);
+            this, iter, nullptr, dense_x, tau.get(), nullptr);
         if (stop_criterion->update()
                 .num_iterations(iter)
-                .residual(r.get())
+                .residual(nullptr)
                 .residual_norm(tau.get())
                 .solution(dense_x)
                 .check(RelativeStoppingId, true, &stop_status, &one_changed)) {
