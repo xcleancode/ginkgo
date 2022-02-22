@@ -206,6 +206,7 @@ protected:
     std::unique_ptr<gko::Array<gko::stopping_status>> d_stop_status;
 };
 
+
 TEST_F(Minres, MinresInitializeIsEquivalentToRef)
 {
     initialize_data();
@@ -240,6 +241,7 @@ TEST_F(Minres, MinresInitializeIsEquivalentToRef)
     GKO_ASSERT_MTX_NEAR(d_sin, sin, ::r<value_type>::value);
     GKO_ASSERT_ARRAY_EQ(*d_stop_status, *stop_status);
 }
+
 
 TEST_F(Minres, MinresStep1IsEquivalentToStep1)
 {
