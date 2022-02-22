@@ -52,7 +52,7 @@ namespace {
 
 GKO_REGISTER_OPERATION(initialize, minres::initialize);
 GKO_REGISTER_OPERATION(step_1, minres::step_1);
-
+GKO_REGISTER_OPERATION(step_2, minres::step_2);
 
 }  // anonymous namespace
 }  // namespace minres
@@ -99,14 +99,16 @@ void Minres<ValueType>::apply_impl(const LinOp* b, LinOp* x) const
  * This Minres implementation is based on Anne Grennbaum's 'Iterative Methods
  * for Solving Linear Systems' (DOI: 10.1137/1.9781611970937) Ch. 2 and Ch. 8.
  * Most variable names are taken from that reference, with the exception that
- * the vector `w` and `w_tilde` from the reference are called `z` and `z_tilde`
- * here. By reusing already allocated memory the number of necessary vectors is
- * reduced to The operations are reordered such that the number of kernel
- * launches can be minimized. Since the dot operations might require global
- * reductions, they are not grouped together with other steps.
- * The algorithm uses a recursion to compute an approximate residual norm. The
- * residual is neither computed exactly, nor approximately, since that would
- * require additional operations.
+ * the vector `w` and `w_tilde` from the reference are called `z` and `z_tilde`.
+ * By reusing already allocated memory the number of necessary vectors is
+ * reduced to seven temporary vectors.
+ * The operations are grouped into point-wise scalar and vector updates,
+ * operator applications and (possibly) global reductions. With some reordering,
+ * as many point-wise updates are grouped together into a scalar and vector step
+ * respectivly to reduce the number of kernel launches.
+ * The algorithm uses a recursion to compute an approximate
+ * residual norm. The residual is neither computed exactly, nor approximately,
+ * since that would require additional operations.
  */
 template <typename ValueType>
 void Minres<ValueType>::apply_dense_impl(
@@ -206,60 +208,68 @@ void Minres<ValueType>::apply_dense_impl(
             break;
         }
 
-        // Lanzcos (partial) update
-        //
+        // Lanzcos (partial) update:
         // v = A * z - beta * q_prev
         // alpha = <v, z>
         // v = v - alpha * q
         // z_tilde = M * v
         // beta = <v, z_tilde>
-        //
-        // p and z get updated in step_1
         system_matrix_->apply(one_op.get(), z.get(), neg_one_op.get(), v.get());
         v->compute_conj_dot(z.get(), alpha.get());
         v->sub_scaled(alpha.get(), q.get());
         get_preconditioner()->apply(v.get(), z_tilde.get());
         v->compute_conj_dot(z_tilde.get(), beta.get());
 
-        // step 1:
-        // finish Lanzcos part 1
+        // Updates scalars (row vectors)
+        // finish Lanzcos:
         // beta = sqrt(beta)
-        // q_prev = v
-        // q_tmp = q
-        // q = v / beta
-        // v = q_tmp * beta
         //
-        // apply two previous givens rot to new column
+        // apply two previous givens rotation to new column:
         // delta = sin_prev * gamma  // 0 if iter = 0, 1
         // tmp_d = gamma
         // tmp_a = alpha
         // gamma = cos_prev * cos * tmp_d + sin * tmp_a  // 0 if iter = 0
         // alpha = -conj(sin) * cos_prev * tmp_d + cos * tmp_a
         //
-        // compute new givens rot
+        // compute and apply new Givens rotation:
         // sin_prev = sin
         // cos_prev = cos
         // cos, sin = givens_rot(alpha, beta)
-        //
-        // apply new givens rot to T and eta
-        // tau = abs(sin) * tau
-        // eta = eta_next
-        // eta_next = -conj(sin) * eta
         // alpha = cos * alpha + sin * beta
         //
-        // update search direction and solution
+        // apply new Givens rotation to eta:
+        // eta = eta_next
+        // eta_next = -conj(sin) * eta
+        //
+        // update residual norm approximation:
+        // tau = abs(sin) * tau
+        exec->run(minres::make_step_1(alpha.get(), beta.get(), gamma.get(),
+                                      delta.get(), cos_prev.get(), cos.get(),
+                                      sin_prev.get(), sin.get(), eta.get(),
+                                      eta_next.get(), tau.get(), &stop_status));
+
+
+        // update vectors
+        // update search direction and solution:
         // swap(p, p_prev)
         // p = (z - gamma * p_prev - delta * p) / alpha
         // x = x + cos * eta * p
         //
-        // finish Lanzcos part 2
+        // finish Lanzcos:
+        // q_prev = v
+        // q_tmp = q
+        // q = v / beta
+        // v = q_tmp * beta
         // z = z_tilde / beta
+        //
+        // store previous beta in gamma:
         // gamma = beta
-        exec->run(minres::make_step_1(
+        swap(p, p_prev);
+        exec->run(minres::make_step_2(
             dense_x, p.get(), p_prev.get(), z.get(), z_tilde.get(), q.get(),
             q_prev.get(), v.get(), alpha.get(), beta.get(), gamma.get(),
-            delta.get(), cos_prev.get(), cos.get(), sin_prev.get(), sin.get(),
-            eta.get(), eta_next.get(), tau.get(), &stop_status));
+            delta.get(), cos.get(), eta.get(), &stop_status));
+        swap(gamma, beta);
     }
 }
 

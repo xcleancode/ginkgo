@@ -84,83 +84,39 @@ GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE(GKO_DECLARE_MINRES_INITIALIZE_KERNEL);
 
 
 template <typename ValueType>
-void compute_givens_rotation(const matrix::Dense<ValueType>* alpha,
-                             const matrix::Dense<ValueType>* beta,
-                             matrix::Dense<ValueType>* cos,
-                             matrix::Dense<ValueType>* sin,
-                             const Array<stopping_status>* stop_status)
+void update_givens_rotation(ValueType& alpha, const ValueType& beta,
+                            ValueType& cos, ValueType& sin)
 {
-    for (size_type j = 0; j < beta->get_size()[1]; ++j) {
-        if (!stop_status->get_const_data()[j].has_stopped()) {
-            if (alpha->at(j) == zero<ValueType>()) {
-                cos->at(j) = zero<ValueType>();
-                sin->at(j) = one<ValueType>();
-            } else {
-                const auto scale = abs(alpha->at(j)) + abs(beta->at(j));
-                const auto hypotenuse =
-                    scale *
-                    sqrt(abs(alpha->at(j) / scale) * abs(alpha->at(j) / scale) +
-                         abs(beta->at(j) / scale) * abs(beta->at(j) / scale));
-                cos->at(j) = conj(alpha->at(j)) / hypotenuse;
-                sin->at(j) = conj(beta->at(j)) / hypotenuse;
-            }
-        }
+    if (alpha == zero<ValueType>()) {
+        cos = zero<ValueType>();
+        sin = one<ValueType>();
+    } else {
+        const auto scale = abs(alpha) + abs(beta);
+        const auto hypotenuse =
+            scale * sqrt(abs(alpha / scale) * abs(alpha / scale) +
+                         abs(beta / scale) * abs(beta / scale));
+        cos = conj(alpha) / hypotenuse;
+        sin = conj(beta) / hypotenuse;
     }
+    alpha = cos * alpha + sin * beta;
 }
 
 
 template <typename ValueType>
 void step_1(std::shared_ptr<const DefaultExecutor> exec,
-            matrix::Dense<ValueType>* x, matrix::Dense<ValueType>* p,
-            matrix::Dense<ValueType>* p_prev, matrix::Dense<ValueType>* z,
-            const matrix::Dense<ValueType>* z_tilde,
-            matrix::Dense<ValueType>* q, matrix::Dense<ValueType>* q_prev,
-            matrix::Dense<ValueType>* q_tilde, matrix::Dense<ValueType>* alpha,
-            matrix::Dense<ValueType>* beta, matrix::Dense<ValueType>* gamma,
-            matrix::Dense<ValueType>* delta, matrix::Dense<ValueType>* cos_prev,
-            matrix::Dense<ValueType>* cos, matrix::Dense<ValueType>* sin_prev,
-            matrix::Dense<ValueType>* sin, matrix::Dense<ValueType>* eta,
-            matrix::Dense<ValueType>* eta_next,
+            matrix::Dense<ValueType>* alpha, matrix::Dense<ValueType>* beta,
+            matrix::Dense<ValueType>* gamma, matrix::Dense<ValueType>* delta,
+            matrix::Dense<ValueType>* cos_prev, matrix::Dense<ValueType>* cos,
+            matrix::Dense<ValueType>* sin_prev, matrix::Dense<ValueType>* sin,
+            matrix::Dense<ValueType>* eta, matrix::Dense<ValueType>* eta_next,
             typename matrix::Dense<ValueType>::absolute_type* tau,
             const Array<stopping_status>* stop_status)
 {
-    /**
-     * beta = sqrt(beta)
-     * q_-1 = q_tilde
-     * q_tmp = q
-     * q = q_tilde / beta
-     * q_tilde = q_tmp * beta
-     */
-    for (size_type j = 0; j < x->get_size()[1]; ++j) {
+    for (size_type j = 0; j < alpha->get_size()[1]; ++j) {
         if (stop_status->get_const_data()[j].has_stopped()) {
             continue;
         }
         beta->at(j) = sqrt(beta->at(j));
-    }
-    for (size_type i = 0; i < x->get_size()[0]; ++i) {
-        for (size_type j = 0; j < x->get_size()[1]; ++j) {
-            if (stop_status->get_const_data()[j].has_stopped()) {
-                continue;
-            }
-            q_prev->at(i, j) = q_tilde->at(i, j);
-            const auto tmp = q->at(i, j);
-            q->at(i, j) = safe_divide(q_tilde->at(i, j), beta->at(j));
-            q_tilde->at(i, j) = tmp * beta->at(j);
-        }
-    }
-
-    /*
-     * apply two previous givens rot to new column
-     * delta = s_-1 * gamma  // 0 if iter = 0, 1
-     * tmp_g = gamma
-     * tmp_a = alpha
-     * gamma = c * c_-1 * tmp_g + s * tmp_a  // 0 if iter = 0
-     * alpha = -conj(s) * c_-1 * tmp_g + c * tmp_a
-     */
-    for (size_type j = 0; j < x->get_size()[1]; ++j) {
-        if (stop_status->get_const_data()[j].has_stopped()) {
-            continue;
-        }
         delta->at(j) = sin_prev->at(j) * gamma->at(j);
         auto tmp_d = gamma->at(j);
         auto tmp_a = alpha->at(j);
@@ -168,47 +124,33 @@ void step_1(std::shared_ptr<const DefaultExecutor> exec,
             cos_prev->at(j) * cos->at(j) * tmp_d + sin->at(j) * tmp_a;
         alpha->at(j) =
             -conj(sin->at(j)) * cos_prev->at(j) * tmp_d + cos->at(j) * tmp_a;
-    }
 
-    /*
-     * compute new givens rot
-     * s_-1 = s
-     * c_-1 = c
-     * c, s = givens_rot(alpha, beta)
-     *
-     */
-    std::swap(*cos, *cos_prev);
-    std::swap(*sin, *sin_prev);
-    compute_givens_rotation(alpha, beta, cos, sin, stop_status);
+        std::swap(cos->at(j), cos_prev->at(j));
+        std::swap(sin->at(j), sin_prev->at(j));
+        update_givens_rotation(alpha->at(j), beta->at(j), cos->at(j),
+                               sin->at(j));
 
-    /*
-     * apply new givens rot to T and eta
-     * eta = eta_+1
-     * eta_+1 = -conj(s) * eta
-     * alpha = c * alpha + s * beta
-     */
-    for (size_type j = 0; j < x->get_size()[1]; ++j) {
-        if (stop_status->get_const_data()[j].has_stopped()) {
-            continue;
-        }
         tau->at(j) = abs(sin->at(j)) * tau->at(j);
         eta->at(j) = eta_next->at(j);
         eta_next->at(j) = -conj(sin->at(j)) * eta->at(j);
-        alpha->at(j) = cos->at(j) * alpha->at(j) + sin->at(j) * beta->at(j);
     }
+}
 
-    /*
-     * update search direction and solution
-     * swap(p, p_-1)
-     * p = (z - gamma * p_-1 - delta * p) / alpha
-     * x = x + c * eta * p
-     *
-     * z = z_tilde / beta  // lanzcos continuation
-     *
-     * prepare next iteration with
-     * gamma = beta
-     */
-    std::swap(*p, *p_prev);
+GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE(GKO_DECLARE_MINRES_STEP_1_KERNEL);
+
+
+template <typename ValueType>
+void step_2(std::shared_ptr<const DefaultExecutor> exec,
+            matrix::Dense<ValueType>* x, matrix::Dense<ValueType>* p,
+            matrix::Dense<ValueType>* p_prev, matrix::Dense<ValueType>* z,
+            const matrix::Dense<ValueType>* z_tilde,
+            matrix::Dense<ValueType>* q, matrix::Dense<ValueType>* q_prev,
+            matrix::Dense<ValueType>* v, matrix::Dense<ValueType>* alpha,
+            matrix::Dense<ValueType>* beta, matrix::Dense<ValueType>* gamma,
+            matrix::Dense<ValueType>* delta, matrix::Dense<ValueType>* cos,
+            matrix::Dense<ValueType>* eta,
+            const Array<stopping_status>* stop_status)
+{
     for (size_type i = 0; i < x->get_size()[0]; ++i) {
         for (size_type j = 0; j < x->get_size()[1]; ++j) {
             if (stop_status->get_const_data()[j].has_stopped()) {
@@ -219,18 +161,17 @@ void step_1(std::shared_ptr<const DefaultExecutor> exec,
                                 delta->at(j) * p->at(i, j),
                             alpha->at(j));
             x->at(i, j) = x->at(i, j) + cos->at(j) * eta->at(j) * p->at(i, j);
+
+            q_prev->at(i, j) = v->at(i, j);
+            const auto tmp = q->at(i, j);
+            q->at(i, j) = safe_divide(v->at(i, j), beta->at(j));
+            v->at(i, j) = tmp * beta->at(j);
             z->at(i, j) = safe_divide(z_tilde->at(i, j), beta->at(j));
         }
     }
-    for (size_type j = 0; j < x->get_size()[1]; ++j) {
-        if (stop_status->get_const_data()[j].has_stopped()) {
-            continue;
-        }
-        gamma->at(j) = beta->at(j);
-    }
 }
 
-GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE(GKO_DECLARE_MINRES_STEP_1_KERNEL);
+GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE(GKO_DECLARE_MINRES_STEP_2_KERNEL);
 
 
 }  // namespace minres

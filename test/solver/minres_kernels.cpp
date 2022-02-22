@@ -102,7 +102,7 @@ protected:
         p_prev = gen_mtx(m, n, n + 2);
         q = gen_mtx(m, n, n + 2);
         q_prev = gen_mtx(m, n, n + 2);
-        q_tilde = gen_mtx(m, n, n + 2);
+        v = gen_mtx(m, n, n + 2);
         x = gen_mtx(m, n, n + 3);
         alpha = gen_mtx(1, n, n);
         beta = gen_mtx(1, n, n)->compute_absolute();
@@ -132,7 +132,7 @@ protected:
         d_p = gko::clone(exec, p);
         d_q = gko::clone(exec, q);
         d_z_tilde = gko::clone(exec, z_tilde);
-        d_q_tilde = gko::clone(exec, q_tilde);
+        d_v = gko::clone(exec, v);
         d_p_prev = gko::clone(exec, p_prev);
         d_q_prev = gko::clone(exec, q_prev);
         d_alpha = gko::clone(exec, alpha);
@@ -164,7 +164,7 @@ protected:
     std::unique_ptr<Mtx> p;
     std::unique_ptr<Mtx> q;
     std::unique_ptr<Mtx> z_tilde;
-    std::unique_ptr<Mtx> q_tilde;
+    std::unique_ptr<Mtx> v;
     std::unique_ptr<Mtx> p_prev;
     std::unique_ptr<Mtx> q_prev;
     std::unique_ptr<Mtx> alpha;
@@ -186,7 +186,7 @@ protected:
     std::unique_ptr<Mtx> d_p;
     std::unique_ptr<Mtx> d_q;
     std::unique_ptr<Mtx> d_z_tilde;
-    std::unique_ptr<Mtx> d_q_tilde;
+    std::unique_ptr<Mtx> d_v;
     std::unique_ptr<Mtx> d_p_prev;
     std::unique_ptr<Mtx> d_q_prev;
     std::unique_ptr<Mtx> d_alpha;
@@ -211,15 +211,14 @@ TEST_F(Minres, MinresInitializeIsEquivalentToRef)
 
     gko::kernels::reference::minres::initialize(
         ref, r.get(), z.get(), p.get(), p_prev.get(), q.get(), q_prev.get(),
-        q_tilde.get(), beta.get(), gamma.get(), delta.get(), cos_prev.get(),
+        v.get(), beta.get(), gamma.get(), delta.get(), cos_prev.get(),
         cos.get(), sin_prev.get(), sin.get(), eta_next.get(), eta.get(),
         stop_status.get());
     gko::kernels::EXEC_NAMESPACE::minres::initialize(
         exec, d_r.get(), d_z.get(), d_p.get(), d_p_prev.get(), d_q.get(),
-        d_q_prev.get(), d_q_tilde.get(), d_beta.get(), d_gamma.get(),
+        d_q_prev.get(), d_v.get(), d_beta.get(), d_gamma.get(),
         d_delta.get(), d_cos_prev.get(), d_cos.get(), d_sin_prev.get(),
         d_sin.get(), d_eta_next.get(), d_eta.get(), d_stop_status.get());
-
 
     GKO_ASSERT_MTX_NEAR(d_r, r, ::r<value_type>::value);
     GKO_ASSERT_MTX_NEAR(d_z, z, ::r<value_type>::value);
@@ -227,7 +226,7 @@ TEST_F(Minres, MinresInitializeIsEquivalentToRef)
     GKO_ASSERT_MTX_NEAR(d_q, q, ::r<value_type>::value);
     GKO_ASSERT_MTX_NEAR(d_p_prev, p_prev, ::r<value_type>::value);
     GKO_ASSERT_MTX_NEAR(d_q_prev, q_prev, ::r<value_type>::value);
-    GKO_ASSERT_MTX_NEAR(d_q_tilde, q_tilde, ::r<value_type>::value);
+    GKO_ASSERT_MTX_NEAR(d_v, v, ::r<value_type>::value);
     GKO_ASSERT_MTX_NEAR(d_alpha, alpha, ::r<value_type>::value);
     GKO_ASSERT_MTX_NEAR(d_beta, beta, ::r<value_type>::value);
     GKO_ASSERT_MTX_NEAR(d_gamma, gamma, ::r<value_type>::value);
@@ -241,29 +240,19 @@ TEST_F(Minres, MinresInitializeIsEquivalentToRef)
     GKO_ASSERT_ARRAY_EQ(*d_stop_status, *stop_status);
 }
 
-TEST_F(Minres, MinresInitializeIsEquivalentToStep1)
+TEST_F(Minres, MinresStep1IsEquivalentToStep1)
 {
     initialize_data();
 
     gko::kernels::reference::minres::step_1(
-        ref, x.get(), p.get(), p_prev.get(), z.get(), z_tilde.get(), q.get(),
-        q_prev.get(), q_tilde.get(), alpha.get(), beta.get(), gamma.get(),
-        delta.get(), cos_prev.get(), cos.get(), sin_prev.get(), sin.get(),
-        eta.get(), eta_next.get(), tau.get(), stop_status.get());
+        ref, alpha.get(), beta.get(), gamma.get(), delta.get(), cos_prev.get(),
+        cos.get(), sin_prev.get(), sin.get(), eta.get(), eta_next.get(),
+        tau.get(), stop_status.get());
     gko::kernels::EXEC_NAMESPACE::minres::step_1(
-        exec, d_x.get(), d_p.get(), d_p_prev.get(), d_z.get(), d_z_tilde.get(),
-        d_q.get(), d_q_prev.get(), d_q_tilde.get(), d_alpha.get(), d_beta.get(),
-        d_gamma.get(), d_delta.get(), d_cos_prev.get(), d_cos.get(),
-        d_sin_prev.get(), d_sin.get(), d_eta.get(), d_eta_next.get(),
-        d_tau.get(), d_stop_status.get());
+        exec, d_alpha.get(), d_beta.get(), d_gamma.get(), d_delta.get(),
+        d_cos_prev.get(), d_cos.get(), d_sin_prev.get(), d_sin.get(),
+        d_eta.get(), d_eta_next.get(), d_tau.get(), d_stop_status.get());
 
-    GKO_ASSERT_MTX_NEAR(d_x, x, ::r<value_type>::value);
-    GKO_ASSERT_MTX_NEAR(d_z, z, ::r<value_type>::value);
-    GKO_ASSERT_MTX_NEAR(d_p, p, ::r<value_type>::value);
-    GKO_ASSERT_MTX_NEAR(d_q, q, ::r<value_type>::value);
-    GKO_ASSERT_MTX_NEAR(d_q_prev, d_q_prev, ::r<value_type>::value);
-    GKO_ASSERT_MTX_NEAR(d_q_tilde, q_tilde, ::r<value_type>::value);
-    GKO_ASSERT_MTX_NEAR(d_p_prev, p_prev, ::r<value_type>::value);
     GKO_ASSERT_MTX_NEAR(d_alpha, alpha, ::r<value_type>::value);
     GKO_ASSERT_MTX_NEAR(d_beta, beta, ::r<value_type>::value);
     GKO_ASSERT_MTX_NEAR(d_gamma, gamma, ::r<value_type>::value);
@@ -275,6 +264,29 @@ TEST_F(Minres, MinresInitializeIsEquivalentToStep1)
     GKO_ASSERT_MTX_NEAR(d_cos, cos, ::r<value_type>::value);
     GKO_ASSERT_MTX_NEAR(d_sin_prev, sin_prev, ::r<value_type>::value);
     GKO_ASSERT_MTX_NEAR(d_sin, sin, ::r<value_type>::value);
+}
+
+
+TEST_F(Minres, MinresStep2IsEquivalentToStep2)
+{
+    initialize_data();
+
+    gko::kernels::reference::minres::step_2(
+        ref, x.get(), p.get(), p_prev.get(), z.get(), z_tilde.get(), q.get(),
+        q_prev.get(), v.get(), alpha.get(), beta.get(), gamma.get(),
+        delta.get(), cos.get(), eta.get(), stop_status.get());
+    gko::kernels::EXEC_NAMESPACE::minres::step_2(
+        exec, d_x.get(), d_p.get(), d_p_prev.get(), d_z.get(), d_z_tilde.get(),
+        d_q.get(), d_q_prev.get(), d_v.get(), d_alpha.get(), d_beta.get(),
+        d_gamma.get(), d_delta.get(), d_cos.get(), d_eta.get(),
+        d_stop_status.get());
+
+    GKO_ASSERT_MTX_NEAR(d_x, x, ::r<value_type>::value);
+    GKO_ASSERT_MTX_NEAR(d_z, z, ::r<value_type>::value);
+    GKO_ASSERT_MTX_NEAR(d_p, p, ::r<value_type>::value);
+    GKO_ASSERT_MTX_NEAR(d_q, q, ::r<value_type>::value);
+    GKO_ASSERT_MTX_NEAR(d_v, v, ::r<value_type>::value);
+    GKO_ASSERT_MTX_NEAR(d_p_prev, p_prev, ::r<value_type>::value);
 }
 
 

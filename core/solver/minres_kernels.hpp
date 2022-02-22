@@ -65,18 +65,25 @@ namespace cg {
                     Array<stopping_status>* stop_status)
 
 
-#define GKO_DECLARE_MINRES_STEP_1_KERNEL(_type)                               \
-    void step_1(std::shared_ptr<const DefaultExecutor> exec,                  \
+#define GKO_DECLARE_MINRES_STEP_1_KERNEL(_type)                            \
+    void step_1(std::shared_ptr<const DefaultExecutor> exec,               \
+                matrix::Dense<_type>* alpha, matrix::Dense<_type>* beta,   \
+                matrix::Dense<_type>* gamma, matrix::Dense<_type>* delta,  \
+                matrix::Dense<_type>* cos_prev, matrix::Dense<_type>* cos, \
+                matrix::Dense<_type>* sin_prev, matrix::Dense<_type>* sin, \
+                matrix::Dense<_type>* eta, matrix::Dense<_type>* eta_next, \
+                typename matrix::Dense<_type>::absolute_type* tau,         \
+                const Array<stopping_status>* stop_status)
+
+#define GKO_DECLARE_MINRES_STEP_2_KERNEL(_type)                               \
+    void step_2(std::shared_ptr<const DefaultExecutor> exec,                  \
                 matrix::Dense<_type>* x, matrix::Dense<_type>* p,             \
                 matrix::Dense<_type>* p_prev, matrix::Dense<_type>* z,        \
                 const matrix::Dense<_type>* z_tilde, matrix::Dense<_type>* q, \
-                matrix::Dense<_type>* q_prev, matrix::Dense<_type>* q_tilde,  \
+                matrix::Dense<_type>* q_prev, matrix::Dense<_type>* v,        \
                 matrix::Dense<_type>* alpha, matrix::Dense<_type>* beta,      \
                 matrix::Dense<_type>* gamma, matrix::Dense<_type>* delta,     \
-                matrix::Dense<_type>* cos_prev, matrix::Dense<_type>* cos,    \
-                matrix::Dense<_type>* sin_prev, matrix::Dense<_type>* sin,    \
-                matrix::Dense<_type>* eta, matrix::Dense<_type>* eta_next,    \
-                typename matrix::Dense<_type>::absolute_type* tau,            \
+                matrix::Dense<_type>* cos, matrix::Dense<_type>* eta,         \
                 const Array<stopping_status>* stop_status)
 
 
@@ -84,7 +91,9 @@ namespace cg {
     template <typename ValueType>                    \
     GKO_DECLARE_MINRES_INITIALIZE_KERNEL(ValueType); \
     template <typename ValueType>                    \
-    GKO_DECLARE_MINRES_STEP_1_KERNEL(ValueType)
+    GKO_DECLARE_MINRES_STEP_1_KERNEL(ValueType);     \
+    template <typename ValueType>                    \
+    GKO_DECLARE_MINRES_STEP_2_KERNEL(ValueType)
 
 
 }  // namespace cg
