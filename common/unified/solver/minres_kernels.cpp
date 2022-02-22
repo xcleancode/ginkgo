@@ -32,6 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "core/solver/minres_kernels.hpp"
 
+
 #include <ginkgo/core/base/executor.hpp>
 
 
@@ -47,6 +48,19 @@ namespace GKO_DEVICE_NAMESPACE {
  * @ingroup minres
  */
 namespace minres {
+namespace detail {
+
+
+template <typename T, typename U>
+GKO_INLINE GKO_ATTRIBUTES void swap(T& a, U& b)
+{
+    U tmp{b};
+    b = a;
+    a = tmp;
+}
+
+
+}  // namespace detail
 
 
 template <typename ValueType>
@@ -115,15 +129,6 @@ GKO_KERNEL void update_givens_rotation(ValueType& alpha, const ValueType& beta,
 }
 
 
-template <typename T, typename U>
-GKO_INLINE GKO_ATTRIBUTES void swap(T& a, U& b)
-{
-    U tmp{b};
-    b = a;
-    a = tmp;
-}
-
-
 template <typename ValueType>
 void step_1(std::shared_ptr<const DefaultExecutor> exec,
             matrix::Dense<ValueType>* alpha, matrix::Dense<ValueType>* beta,
@@ -149,8 +154,8 @@ void step_1(std::shared_ptr<const DefaultExecutor> exec,
                 alpha[col] =
                     -conj(sin[col]) * cos_prev[col] * tmp_d + cos[col] * tmp_a;
 
-                swap(cos[col], cos_prev[col]);
-                swap(sin[col], sin_prev[col]);
+                detail::swap(cos[col], cos_prev[col]);
+                detail::swap(sin[col], sin_prev[col]);
                 update_givens_rotation(alpha[col], beta[col], cos[col],
                                        sin[col]);
 

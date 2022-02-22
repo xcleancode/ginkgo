@@ -296,7 +296,7 @@ TYPED_TEST(Minres, SolvesSystem)
     using vt = typename TestFixture::value_type;
     auto one_op = gko::initialize<Mtx>({gko::one<vt>()}, this->exec);
     auto neg_one_op = gko::initialize<Mtx>({-gko::one<vt>()}, this->exec);
-    auto solver = this->minres_factory->template generate(this->mtx);
+    auto solver = this->minres_factory->generate(this->mtx);
     auto x = gko::initialize<Mtx>({-1., 2., 3., 4.}, this->exec);
     auto sol = gko::clone(this->exec, x);
     auto b = Mtx::create(this->exec, x->get_size());

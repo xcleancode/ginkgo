@@ -48,6 +48,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "core/solver/minres_kernels.hpp"
 #include "core/test/utils.hpp"
+#include "core/test/utils/matrix_utils.hpp"
 #include "test/utils/executor.hpp"
 
 namespace {
@@ -299,7 +300,7 @@ TEST_F(Minres, ApplyIsEquivalentToRef)
     auto d_mtx = gko::clone(exec, mtx);
     auto d_x = gko::clone(exec, x);
     auto d_b = gko::clone(exec, b);
-    auto cg_factory =
+    auto minres_factory =
         gko::solver::Minres<value_type>::build()
             .with_criteria(
                 gko::stop::Iteration::build().with_max_iters(400u).on(ref),
@@ -307,7 +308,7 @@ TEST_F(Minres, ApplyIsEquivalentToRef)
                     .with_reduction_factor(::r<value_type>::value)
                     .on(ref))
             .on(ref);
-    auto d_cg_factory =
+    auto d_minres_factory =
         gko::solver::Minres<value_type>::build()
             .with_criteria(
                 gko::stop::Iteration::build().with_max_iters(400u).on(exec),
@@ -315,8 +316,8 @@ TEST_F(Minres, ApplyIsEquivalentToRef)
                     .with_reduction_factor(::r<value_type>::value)
                     .on(exec))
             .on(exec);
-    auto solver = cg_factory->generate(std::move(mtx));
-    auto d_solver = d_cg_factory->generate(std::move(d_mtx));
+    auto solver = minres_factory->generate(std::move(mtx));
+    auto d_solver = d_minres_factory->generate(std::move(d_mtx));
 
     solver->apply(b.get(), x.get());
     d_solver->apply(d_b.get(), d_x.get());

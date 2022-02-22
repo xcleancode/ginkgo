@@ -161,7 +161,7 @@ void Minres<ValueType>::apply_dense_impl(
                                        dense_b->get_size()[1]);
 
     // r = dense_b
-    r = clone(dense_b);
+    r = gko::clone(dense_b);
     system_matrix_->apply(neg_one_op.get(), dense_x, one_op.get(), r.get());
     auto stop_criterion = stop_criterion_factory_->generate(
         system_matrix_,
