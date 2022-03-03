@@ -170,13 +170,15 @@ protected:
         if (parameters_.generated_preconditioner) {
             GKO_ASSERT_EQUAL_DIMENSIONS(parameters_.generated_preconditioner,
                                         this);
-            set_preconditioner(parameters_.generated_preconditioner);
+            Preconditionable::set_preconditioner(
+                parameters_.generated_preconditioner);
         } else if (parameters_.preconditioner) {
-            set_preconditioner(
+            Preconditionable::set_preconditioner(
                 parameters_.preconditioner->generate(system_matrix_));
         } else {
-            set_preconditioner(matrix::Identity<ValueType>::create(
-                this->get_executor(), this->get_size()));
+            Preconditionable::set_preconditioner(
+                matrix::Identity<ValueType>::create(this->get_executor(),
+                                                    this->get_size()));
         }
         stop_criterion_factory_ =
             stop::combine(std::move(parameters_.criteria));

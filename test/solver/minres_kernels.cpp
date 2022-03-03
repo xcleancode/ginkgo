@@ -40,6 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ginkgo/core/base/exception.hpp>
 #include <ginkgo/core/base/executor.hpp>
 #include <ginkgo/core/matrix/dense.hpp>
+#include <ginkgo/core/preconditioner/jacobi.hpp>
 #include <ginkgo/core/stop/combined.hpp>
 #include <ginkgo/core/stop/iteration.hpp>
 #include <ginkgo/core/stop/residual_norm.hpp>
@@ -316,6 +317,50 @@ TEST_F(Minres, ApplyIsEquivalentToRef)
                 gko::stop::Iteration::build().with_max_iters(400u).on(exec),
                 gko::stop::ResidualNorm<value_type>::build()
                     .with_reduction_factor(::r<value_type>::value)
+                    .on(exec))
+            .on(exec);
+    auto solver = minres_factory->generate(std::move(mtx));
+    auto d_solver = d_minres_factory->generate(std::move(d_mtx));
+
+    solver->apply(b.get(), x.get());
+    d_solver->apply(d_b.get(), d_x.get());
+
+    GKO_ASSERT_MTX_NEAR(d_x, x, ::r<value_type>::value * 100);
+}
+
+
+TEST_F(Minres, PreconditionedApplyIsEquivalentToRef)
+{
+
+    auto mtx = gen_mtx(50, 50, 53);
+    gko::test::make_hpd(mtx.get());
+    auto x = gen_mtx(50, 1, 5);
+    auto b = gen_mtx(50, 1, 4);
+    auto d_mtx = gko::clone(exec, mtx);
+    auto d_x = gko::clone(exec, x);
+    auto d_b = gko::clone(exec, b);
+    auto minres_factory =
+        gko::solver::Minres<value_type>::build()
+            .with_criteria(
+                gko::stop::Iteration::build().with_max_iters(400u).on(ref),
+                gko::stop::ResidualNorm<value_type>::build()
+                    .with_reduction_factor(::r<value_type>::value)
+                    .on(ref))
+            .with_preconditioner(
+                gko::preconditioner::Jacobi<value_type>::build()
+                    .with_max_block_size(1u)
+                    .on(ref))
+            .on(ref);
+    auto d_minres_factory =
+        gko::solver::Minres<value_type>::build()
+            .with_criteria(
+                gko::stop::Iteration::build().with_max_iters(400u).on(exec),
+                gko::stop::ResidualNorm<value_type>::build()
+                    .with_reduction_factor(::r<value_type>::value)
+                    .on(exec))
+            .with_preconditioner(
+                gko::preconditioner::Jacobi<value_type>::build()
+                    .with_max_block_size(1u)
                     .on(exec))
             .on(exec);
     auto solver = minres_factory->generate(std::move(mtx));

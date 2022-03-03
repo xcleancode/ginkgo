@@ -39,6 +39,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ginkgo/core/base/exception.hpp>
 #include <ginkgo/core/base/executor.hpp>
 #include <ginkgo/core/matrix/dense.hpp>
+#include <ginkgo/core/preconditioner/jacobi.hpp>
 #include <ginkgo/core/stop/combined.hpp>
 #include <ginkgo/core/stop/iteration.hpp>
 #include <ginkgo/core/stop/residual_norm.hpp>
@@ -94,6 +95,19 @@ protected:
                       gko::stop::ResidualNorm<value_type>::build()
                           .with_reduction_factor(r<value_type>::value / 2)
                           .on(exec))
+                  .on(exec)),
+          preconditioned_minres_factory(
+              Solver::build()
+                  .with_criteria(
+                      gko::stop::Iteration::build().with_max_iters(40u).on(
+                          exec),
+                      gko::stop::ResidualNorm<value_type>::build()
+                          .with_reduction_factor(r<value_type>::value / 2)
+                          .on(exec))
+                  .with_preconditioner(
+                      gko::preconditioner::Jacobi<value_type>::build()
+                          .with_max_block_size(1u)
+                          .on(exec))
                   .on(exec))
     {
         stopped.stop(1);
@@ -135,6 +149,7 @@ protected:
     gko::Array<gko::stopping_status> small_stop;
 
     std::unique_ptr<typename Solver::Factory> minres_factory;
+    std::unique_ptr<typename Solver::Factory> preconditioned_minres_factory;
 };
 
 TYPED_TEST_SUITE(Minres, gko::test::ValueTypes, TypenameNameGenerator);
@@ -296,6 +311,25 @@ TYPED_TEST(Minres, SolvesSystem)
     auto one_op = gko::initialize<Mtx>({gko::one<vt>()}, this->exec);
     auto neg_one_op = gko::initialize<Mtx>({-gko::one<vt>()}, this->exec);
     auto solver = this->minres_factory->generate(this->mtx);
+    auto x = gko::initialize<Mtx>({-1., 2., 3., 4.}, this->exec);
+    auto sol = gko::clone(this->exec, x);
+    auto b = Mtx::create(this->exec, x->get_size());
+    this->mtx->apply(x.get(), b.get());
+    x->fill(0.);
+
+    solver->apply(b.get(), x.get());
+
+    GKO_ASSERT_MTX_NEAR(x, sol, r<vt>::value * 10);
+}
+
+
+TYPED_TEST(Minres, SolvesPreconditionedSystem)
+{
+    using Mtx = typename TestFixture::Mtx;
+    using vt = typename TestFixture::value_type;
+    auto one_op = gko::initialize<Mtx>({gko::one<vt>()}, this->exec);
+    auto neg_one_op = gko::initialize<Mtx>({-gko::one<vt>()}, this->exec);
+    auto solver = this->preconditioned_minres_factory->generate(this->mtx);
     auto x = gko::initialize<Mtx>({-1., 2., 3., 4.}, this->exec);
     auto sol = gko::clone(this->exec, x);
     auto b = Mtx::create(this->exec, x->get_size());
