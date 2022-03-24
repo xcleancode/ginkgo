@@ -43,12 +43,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ginkgo/core/base/dense_cache.hpp>
 #include <ginkgo/core/base/mpi.hpp>
 #include <ginkgo/core/distributed/base.hpp>
-#include <ginkgo/core/distributed/partition.hpp>
 #include <ginkgo/core/matrix/dense.hpp>
 
 
 namespace gko {
 namespace distributed {
+
+
+template <typename LocalIndexType, typename GlobalIndexType>
+class Partition;
 
 
 /**
@@ -70,9 +73,6 @@ namespace distributed {
  *
  * @note Operations between two vectors (axpy, dot product, etc.) are only valid
  * if both vectors where created using the same partition.
- *
- * @note Operations between two vectors (axpy, dot product, etc.) are only valid
- * if both vectors use the same partition.
  *
  * @tparam ValueType  The precision of vector elements.
  *
