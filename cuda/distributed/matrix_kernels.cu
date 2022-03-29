@@ -36,29 +36,17 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ginkgo/core/base/exception_helpers.hpp>
 
 
+#include <thrust/distance.h>
+#include <thrust/tuple.h>
+
+
 namespace gko {
 namespace kernels {
 namespace cuda {
 namespace distributed_matrix {
 
 
-template <typename ValueType, typename LocalIndexType, typename GlobalIndexType>
-void build_diag_offdiag(
-    std::shared_ptr<const DefaultExecutor> exec,
-    const device_matrix_data<ValueType, GlobalIndexType>& input,
-    const distributed::Partition<LocalIndexType, GlobalIndexType>*
-        row_partition,
-    const distributed::Partition<LocalIndexType, GlobalIndexType>*
-        col_partition,
-    comm_index_type local_part, array<LocalIndexType>& diag_row_idxs,
-    array<LocalIndexType>& diag_col_idxs, array<ValueType>& diag_values,
-    array<LocalIndexType>& offdiag_row_idxs,
-    array<LocalIndexType>& offdiag_col_idxs, array<ValueType>& offdiag_values,
-    array<LocalIndexType>& local_gather_idxs, comm_index_type* recv_offsets,
-    array<GlobalIndexType>& local_to_global_ghost) GKO_NOT_IMPLEMENTED;
-
-GKO_INSTANTIATE_FOR_EACH_VALUE_AND_LOCAL_GLOBAL_INDEX_TYPE(
-    GKO_DECLARE_BUILD_DIAG_OFFDIAG);
+#include "common/cuda_hip/distributed/matrix_kernels.hpp.inc"
 
 
 }  // namespace distributed_matrix

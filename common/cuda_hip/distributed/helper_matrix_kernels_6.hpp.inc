@@ -30,26 +30,25 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************<GINKGO LICENSE>*******************************/
 
-#include "core/distributed/matrix_kernels.hpp"
+using gko::distributed::comm_index_type;
 
 
-#include <ginkgo/core/base/exception_helpers.hpp>
+template <typename GlobalIndexType>
+GlobalIndexType* make_offdiag_cols_unique(
+    comm_index_type* offdiag_col_part_ids,
+    GlobalIndexType* offdiag_global_col_idxs, size_type* offdiag_col_range_ids,
+    size_type num_offdiag_elements)
+{
+    return thrust::get<0>(thrust::unique_by_key(
+        thrust::device, offdiag_global_col_idxs,
+        offdiag_global_col_idxs + num_offdiag_elements,
+        thrust::make_zip_iterator(
+            thrust::make_tuple(offdiag_col_part_ids, offdiag_col_range_ids))));
+}
 
+#define GKO_DECLARE_MAKE_OFFDIAG_COLS_UNIQUE(_type)                            \
+    _type* make_offdiag_cols_unique(                                           \
+        comm_index_type* offdiag_col_part_ids, _type* offdiag_global_col_idxs, \
+        size_type* offdiag_col_range_ids, size_type num_offdiag_elements)
 
-#include <thrust/distance.h>
-#include <thrust/tuple.h>
-
-
-namespace gko {
-namespace kernels {
-namespace hip {
-namespace distributed_matrix {
-
-
-#include "common/cuda_hip/distributed/matrix_kernels.hpp.inc"
-
-
-}  // namespace distributed_matrix
-}  // namespace hip
-}  // namespace kernels
-}  // namespace gko
+GKO_INSTANTIATE_FOR_EACH_INDEX_TYPE(GKO_DECLARE_MAKE_OFFDIAG_COLS_UNIQUE);

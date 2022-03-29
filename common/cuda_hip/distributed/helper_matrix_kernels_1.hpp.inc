@@ -30,26 +30,20 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************<GINKGO LICENSE>*******************************/
 
-#include "core/distributed/matrix_kernels.hpp"
+template <typename GlobalIndexType>
+void compute_range_ids(const GlobalIndexType* range_bounds,
+                       size_type num_ranges, const GlobalIndexType* input,
+                       size_type num_input, size_type* result)
+{
+    thrust::upper_bound(thrust::device, range_bounds + 1,
+                        range_bounds + num_ranges + 1, input, input + num_input,
+                        result);
+}
 
 
-#include <ginkgo/core/base/exception_helpers.hpp>
+#define GKO_DEFINE_COMPUTE_RANGE_IDS(_type)                                 \
+    void compute_range_ids(const _type* range_bounds, size_type num_ranges, \
+                           const _type*, size_type num_input,               \
+                           size_type* result)
 
-
-#include <thrust/distance.h>
-#include <thrust/tuple.h>
-
-
-namespace gko {
-namespace kernels {
-namespace hip {
-namespace distributed_matrix {
-
-
-#include "common/cuda_hip/distributed/matrix_kernels.hpp.inc"
-
-
-}  // namespace distributed_matrix
-}  // namespace hip
-}  // namespace kernels
-}  // namespace gko
+GKO_INSTANTIATE_FOR_EACH_INDEX_TYPE(GKO_DEFINE_COMPUTE_RANGE_IDS);

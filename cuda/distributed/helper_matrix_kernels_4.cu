@@ -30,26 +30,27 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************<GINKGO LICENSE>*******************************/
 
-#include "core/distributed/matrix_kernels.hpp"
+
+#include <ginkgo/core/base/device_matrix_data.hpp>
+#include <ginkgo/core/base/types.hpp>
 
 
-#include <ginkgo/core/base/exception_helpers.hpp>
-
-
-#include <thrust/distance.h>
-#include <thrust/tuple.h>
+#include <thrust/copy.h>
+#include <thrust/execution_policy.h>
+#include <thrust/iterator/transform_iterator.h>
+#include <thrust/iterator/zip_iterator.h>
 
 
 namespace gko {
 namespace kernels {
-namespace hip {
+namespace cuda {
 namespace distributed_matrix {
 
 
-#include "common/cuda_hip/distributed/matrix_kernels.hpp.inc"
+#include "common/cuda_hip/distributed/helper_matrix_kernels_4.hpp.inc"
 
 
 }  // namespace distributed_matrix
-}  // namespace hip
+}  // namespace cuda
 }  // namespace kernels
 }  // namespace gko

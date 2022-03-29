@@ -76,6 +76,14 @@ target_sources(ginkgo_cuda
     base/version.cpp
     components/prefix_sum_kernels.cu
     distributed/matrix_kernels.cu
+    distributed/helper_matrix_kernels_1.cu
+    distributed/helper_matrix_kernels_2.cu
+    distributed/helper_matrix_kernels_3.cu
+    distributed/helper_matrix_kernels_4.cu
+    distributed/helper_matrix_kernels_5.cu
+    distributed/helper_matrix_kernels_6.cu
+    distributed/helper_matrix_kernels_7.cu
+    distributed/helper_matrix_kernels_8.cu
     distributed/partition_kernels.cu
     distributed/vector_kernels.cu
     factorization/cholesky_kernels.cu
