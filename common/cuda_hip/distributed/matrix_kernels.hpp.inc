@@ -181,17 +181,22 @@ void build_diag_offdiag(
             return row_part == local_part && col_part != local_part;
         });
 
-    // 1. stable sort global columns, part-id and range-id according to
+    // 1. sort global columns, part-id and range-id according to
     // their part-id and global columns
-    auto key_it = thrust::make_zip_iterator(thrust::make_tuple(
-        offdiag_col_part_ids.get_data(), offdiag_global_col_idxs.get_data()));
-    thrust::stable_sort_by_key(thrust::device, key_it,
-                               key_it + num_offdiag_elements,
-                               offdiag_col_range_ids.get_data());
+    // the previous `offdiag_global_col_idxs` is not modify to
+    // keep it consistent with the offdiag row and values array
+    Array<GlobalIndexType> sorted_offdiag_global_col_idxs{
+        exec, offdiag_global_col_idxs};
+    auto key_it = thrust::make_zip_iterator(
+        thrust::make_tuple(offdiag_col_part_ids.get_data(),
+                           sorted_offdiag_global_col_idxs.get_data()));
+    thrust::sort_by_key(thrust::device, key_it, key_it + num_offdiag_elements,
+                        offdiag_col_range_ids.get_data());
 
     // 2. remove duplicate columns, now the new column i has global index
     // offdiag_global_col_idxs[i]
-    auto offdiag_global_col_idxs_begin = offdiag_global_col_idxs.get_data();
+    auto offdiag_global_col_idxs_begin =
+        sorted_offdiag_global_col_idxs.get_data();
     auto offdiag_global_col_idxs_end = thrust::get<0>(thrust::unique_by_key(
         thrust::device, offdiag_global_col_idxs_begin,
         offdiag_global_col_idxs_begin + num_offdiag_elements,
@@ -221,27 +226,7 @@ void build_diag_offdiag(
             offdiag_col_part_ids.get_data(), permutation.get_data())));
 
     // 4. map column index of offdiag entries to new columns
-    auto permutation_data = permutation.get_data();
-    auto map_to_unique_col =
-        [permutation_data] __host__ __device__(const size_type lower_bound) {
-            return permutation_data[lower_bound];
-        };
-
     Array<LocalIndexType> offdiag_col_idxs{exec, num_offdiag_elements};
-    // store additional global column indices because I need to keep the
-    // sorted global columns
-    Array<GlobalIndexType> tmp_offdiag_global_cols_idxs{exec,
-                                                        num_offdiag_elements};
-    thrust::copy_if(
-        thrust::device, input.get_const_col_idxs(),
-        input.get_const_col_idxs() + num_input_elements, range_ids_it,
-        tmp_offdiag_global_cols_idxs.get_data(),
-        [local_part, row_part_ids, col_part_ids] __host__ __device__(
-            const thrust::tuple<size_type, size_type>& tuple) {
-            auto row_part = row_part_ids[thrust::get<0>(tuple)];
-            auto col_part = col_part_ids[thrust::get<1>(tuple)];
-            return row_part == local_part && col_part != local_part;
-        });
     Array<size_type> lower_bounds{exec, num_offdiag_elements};
     // I have to precompute the lower bounds because the calling binary
     // searches from the device does not work:
@@ -249,15 +234,16 @@ void build_diag_offdiag(
     thrust::lower_bound(
         thrust::device, offdiag_global_col_idxs_begin,
         offdiag_global_col_idxs_begin + num_offdiag_cols,
-        tmp_offdiag_global_cols_idxs.get_data(),
-        tmp_offdiag_global_cols_idxs.get_data() + num_offdiag_elements,
+        offdiag_global_col_idxs.get_data(),
+        offdiag_global_col_idxs.get_data() + num_offdiag_elements,
         lower_bounds.get_data());
+    auto permutation_data = permutation.get_data();
     thrust::transform(
         thrust::device, lower_bounds.get_data(),
         lower_bounds.get_data() + num_offdiag_elements,
         offdiag_col_idxs.get_data(),
-        [map_to_unique_col] __host__ __device__(const GlobalIndexType col) {
-            return map_to_unique_col(col);
+        [permutation_data] __host__ __device__(const size_type lower_bound) {
+            return permutation_data[lower_bound];
         });
 
     // 5. compute gather idxs and recv_offsets
