@@ -36,8 +36,20 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ginkgo/core/base/exception_helpers.hpp>
 
 
+#include <thrust/binary_search.h>
+#include <thrust/copy.h>
 #include <thrust/distance.h>
-#include <thrust/tuple.h>
+#include <thrust/execution_policy.h>
+#include <thrust/for_each.h>
+#include <thrust/iterator/transform_iterator.h>
+#include <thrust/iterator/zip_iterator.h>
+#include <thrust/sequence.h>
+#include <thrust/sort.h>
+#include <thrust/transform_reduce.h>
+#include <thrust/unique.h>
+
+
+#include "cuda/components/atomic.cuh"
 
 
 namespace gko {

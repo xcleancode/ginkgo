@@ -164,14 +164,6 @@ set(GINKGO_HIP_SOURCES
     base/index_set_kernels.hip.cpp
     base/version.hip.cpp
     components/prefix_sum_kernels.hip.cpp
-    distributed/helper_matrix_kernels_1.hip.cpp
-    distributed/helper_matrix_kernels_2.hip.cpp
-    distributed/helper_matrix_kernels_3.hip.cpp
-    distributed/helper_matrix_kernels_4.hip.cpp
-    distributed/helper_matrix_kernels_5.hip.cpp
-    distributed/helper_matrix_kernels_6.hip.cpp
-    distributed/helper_matrix_kernels_7.hip.cpp
-    distributed/helper_matrix_kernels_8.hip.cpp
     distributed/matrix_kernels.hip.cpp
     distributed/partition_kernels.hip.cpp
     distributed/vector_kernels.hip.cpp
