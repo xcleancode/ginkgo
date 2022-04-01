@@ -103,25 +103,60 @@ namespace distributed {
  * @ingroup distributed
  */
 template <typename LocalIndexType = int32, typename GlobalIndexType = int64>
-class partition
-    : public EnablePolymorphicObject<
-          partition<LocalIndexType, GlobalIndexType>>,
-      public EnablePolymorphicAssignment<
-          partition<LocalIndexType, GlobalIndexType>>,
-      public EnableCreateMethod<partition<LocalIndexType, GlobalIndexType>> {
-    friend class EnableCreateMethod<partition>;
-    friend class EnablePolymorphicObject<partition>;
+class partition {
     static_assert(sizeof(GlobalIndexType) >= sizeof(LocalIndexType),
                   "GlobalIndexType must be at least as large as "
                   "LocalIndexType");
 
 public:
-    using EnableCreateMethod<partition>::create;
-    using EnablePolymorphicAssignment<partition>::convert_to;
-    using EnablePolymorphicAssignment<partition>::move_to;
-
     using local_index_type = LocalIndexType;
     using global_index_type = GlobalIndexType;
+
+
+    /**
+     * Creates an empty partition on the specified executor
+     *
+     * @param exec  the Executor on which the partition should be built
+     */
+    explicit partition(std::shared_ptr<const Executor> exec);
+
+    /**
+     * Builds a partition from a given mapping global_index -> part_id.
+     *
+     * @param exec  the Executor on which the partition should be built
+     * @param mapping  the mapping from global indices to part IDs.
+     * @param num_parts  the number of parts used in the mapping.
+     */
+    partition(std::shared_ptr<const Executor> exec,
+              const Array<comm_index_type>& mapping, comm_index_type num_parts);
+
+    /**
+     * Builds a partition consisting of contiguous ranges, one for each part.
+     *
+     * @param exec  the Executor on which the partition should be built
+     * @param ranges  the boundaries of the ranges representing each part.
+     *                Part i contains the indices [ranges[i], ranges[i + 1]).
+     *                Has to contain at least one element.
+     *                The first element has to be 0.
+     *
+     * @return  a partition representing the given contiguous partitioning.
+     */
+    partition(std::shared_ptr<const Executor> exec,
+              const Array<global_index_type>& ranges);
+
+    /**
+     * Builds a partition by evenly distributing the global range.
+     *
+     * @param exec  the Executor on which the partition should be built
+     * @param num_parts  the number of parst used in this partition
+     * @param global_size  the global size of this partition
+     *
+     * @return  a partition where each range has either
+     * `floor(global_size/num_parts)` or `floor(global_size/num_parts) + 1`
+     * indices.
+     */
+    partition(std::shared_ptr<const Executor> exec, comm_index_type num_parts,
+              global_index_type global_size);
 
     /**
      * Returns the total number of elements represented by this partition.
@@ -241,71 +276,20 @@ public:
      */
     bool has_ordered_parts();
 
-    /**
-     * Builds a partition from a given mapping global_index -> part_id.
-     *
-     * @param exec  the Executor on which the partition should be built
-     * @param mapping  the mapping from global indices to part IDs.
-     * @param num_parts  the number of parts used in the mapping.
-     *
-     * @return  a partition representing the given mapping as a set of ranges
-     */
-    static std::unique_ptr<partition> build_from_mapping(
-        std::shared_ptr<const Executor> exec,
-        const Array<comm_index_type>& mapping, comm_index_type num_parts);
+    std::shared_ptr<const Executor> get_executor() const { return exec_; }
 
-    /**
-     * Builds a partition consisting of contiguous ranges, one for each part.
-     *
-     * @param exec  the Executor on which the partition should be built
-     * @param ranges  the boundaries of the ranges representing each part.
-     *                Part i contains the indices [ranges[i], ranges[i + 1]).
-     *                Has to contain at least one element.
-     *                The first element has to be 0.
-     *
-     * @return  a partition representing the given contiguous partitioning.
-     */
-    static std::unique_ptr<partition> build_from_contiguous(
-        std::shared_ptr<const Executor> exec,
-        const Array<global_index_type>& ranges);
+    partition(std::shared_ptr<const Executor> exec, const partition& other);
 
-    /**
-     * Builds a partition by evenly distributing the global range.
-     *
-     * @param exec  the Executor on which the partition should be built
-     * @param num_parts  the number of parst used in this partition
-     * @param global_size  the global size of this partition
-     *
-     * @return  a partition where each range has either
-     * `floor(global_size/num_parts)` or `floor(global_size/num_parts) + 1`
-     * indices.
-     */
-    static std::unique_ptr<partition> build_from_global_size_uniform(
-        std::shared_ptr<const Executor> exec, comm_index_type num_parts,
-        global_index_type global_size);
+    partition(std::shared_ptr<const Executor> exec, partition&& other);
+    partition(const partition& other);
+
+    partition(partition&& other);
+
+    partition& operator=(const partition& other);
+
+    partition& operator=(partition&& other);
 
 private:
-    /**
-     * Creates a partition stored on the given executor with the given number of
-     * consecutive ranges and parts.
-     */
-    partition(std::shared_ptr<const Executor> exec,
-              comm_index_type num_parts = 0, size_type num_ranges = 0)
-        : EnablePolymorphicObject<partition>{exec},
-          num_parts_{num_parts},
-          num_empty_parts_{0},
-          size_{0},
-          offsets_{exec, num_ranges + 1},
-          starting_indices_{exec, num_ranges},
-          part_sizes_{exec, static_cast<size_type>(num_parts)},
-          part_ids_{exec, num_ranges}
-    {
-        offsets_.fill(0);
-        starting_indices_.fill(0);
-        part_sizes_.fill(0);
-        part_ids_.fill(0);
-    }
-
     /**
      * Finalizes the construction in the create_* methods, by computing the
      * range_starting_indices_ and part_sizes_ based on the current
@@ -313,6 +297,7 @@ private:
      */
     void finalize_construction();
 
+    std::shared_ptr<const Executor> exec_;
     comm_index_type num_parts_;
     comm_index_type num_empty_parts_;
     global_index_type size_;
@@ -324,6 +309,28 @@ private:
 
 
 }  // namespace distributed
+
+
+namespace detail {
+
+
+template <typename LocalIndexType, typename GlobalIndexType>
+struct temporary_clone_helper<
+    const distributed::partition<LocalIndexType, GlobalIndexType>> {
+    static std::unique_ptr<
+        const distributed::partition<LocalIndexType, GlobalIndexType>>
+    create(std::shared_ptr<const Executor> exec,
+           const distributed::partition<LocalIndexType, GlobalIndexType>* ptr,
+           bool)
+    {
+        return std::make_unique<
+            const distributed::partition<LocalIndexType, GlobalIndexType>>(
+            std::move(exec), *ptr);
+    }
+};
+
+
+}  // namespace detail
 }  // namespace gko
 
 

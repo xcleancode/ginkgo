@@ -81,41 +81,40 @@ protected:
         }
     }
 
-    void assert_equal(std::unique_ptr<part_type>& part,
-                      std::unique_ptr<part_type>& dpart)
+    void assert_equal(part_type& part, part_type& dpart)
     {
-        ASSERT_EQ(part->get_size(), dpart->get_size());
-        ASSERT_EQ(part->get_num_ranges(), dpart->get_num_ranges());
-        ASSERT_EQ(part->get_num_parts(), dpart->get_num_parts());
-        ASSERT_EQ(part->get_num_empty_parts(), dpart->get_num_empty_parts());
+        ASSERT_EQ(part.get_size(), dpart.get_size());
+        ASSERT_EQ(part.get_num_ranges(), dpart.get_num_ranges());
+        ASSERT_EQ(part.get_num_parts(), dpart.get_num_parts());
+        ASSERT_EQ(part.get_num_empty_parts(), dpart.get_num_empty_parts());
         GKO_ASSERT_ARRAY_EQ(
             gko::make_array_view(
-                this->ref, part->get_num_ranges() + 1,
-                const_cast<global_index_type*>(part->get_range_bounds())),
+                this->ref, part.get_num_ranges() + 1,
+                const_cast<global_index_type*>(part.get_range_bounds())),
             gko::make_array_view(
-                this->exec, dpart->get_num_ranges() + 1,
-                const_cast<global_index_type*>(dpart->get_range_bounds())));
+                this->exec, dpart.get_num_ranges() + 1,
+                const_cast<global_index_type*>(dpart.get_range_bounds())));
         GKO_ASSERT_ARRAY_EQ(
             gko::make_array_view(
-                this->ref, part->get_num_ranges(),
-                const_cast<comm_index_type*>(part->get_part_ids())),
+                this->ref, part.get_num_ranges(),
+                const_cast<comm_index_type*>(part.get_part_ids())),
             gko::make_array_view(
-                this->exec, dpart->get_num_ranges(),
-                const_cast<comm_index_type*>(dpart->get_part_ids())));
+                this->exec, dpart.get_num_ranges(),
+                const_cast<comm_index_type*>(dpart.get_part_ids())));
         GKO_ASSERT_ARRAY_EQ(
-            gko::make_array_view(this->ref, part->get_num_ranges(),
+            gko::make_array_view(this->ref, part.get_num_ranges(),
                                  const_cast<local_index_type*>(
-                                     part->get_range_starting_indices())),
-            gko::make_array_view(this->exec, dpart->get_num_ranges(),
+                                     part.get_range_starting_indices())),
+            gko::make_array_view(this->exec, dpart.get_num_ranges(),
                                  const_cast<local_index_type*>(
-                                     dpart->get_range_starting_indices())));
+                                     dpart.get_range_starting_indices())));
         GKO_ASSERT_ARRAY_EQ(
             gko::make_array_view(
-                this->ref, part->get_num_parts(),
-                const_cast<local_index_type*>(part->get_part_sizes())),
+                this->ref, part.get_num_parts(),
+                const_cast<local_index_type*>(part.get_part_sizes())),
             gko::make_array_view(
-                this->exec, dpart->get_num_parts(),
-                const_cast<local_index_type*>(dpart->get_part_sizes())));
+                this->exec, dpart.get_num_parts(),
+                const_cast<local_index_type*>(dpart.get_part_sizes())));
     }
 
     std::default_random_engine rand_engine;
@@ -124,7 +123,8 @@ protected:
     std::shared_ptr<gko::EXEC_TYPE> exec;
 };
 
-TYPED_TEST_SUITE(Partition, gko::test::LocalGlobalIndexTypes, PairTypenameNameGenerator);
+TYPED_TEST_SUITE(Partition, gko::test::LocalGlobalIndexTypes,
+                 PairTypenameNameGenerator);
 
 
 TYPED_TEST(Partition, BuildsFromMapping)
@@ -136,8 +136,8 @@ TYPED_TEST(Partition, BuildsFromMapping)
         10000, part_dist, this->rand_engine, this->ref);
     gko::Array<comm_index_type> dmapping{this->exec, mapping};
 
-    auto part = part_type::build_from_mapping(this->ref, mapping, num_parts);
-    auto dpart = part_type::build_from_mapping(this->exec, dmapping, num_parts);
+    auto part = part_type(this->ref, mapping, num_parts);
+    auto dpart = part_type(this->exec, dmapping, num_parts);
 
     this->assert_equal(part, dpart);
 }
@@ -153,8 +153,8 @@ TYPED_TEST(Partition, BuildsFromMappingWithEmptyPart)
         10000, part_dist, this->rand_engine, this->ref);
     gko::Array<comm_index_type> dmapping{this->exec, mapping};
 
-    auto part = part_type::build_from_mapping(this->ref, mapping, num_parts);
-    auto dpart = part_type::build_from_mapping(this->exec, dmapping, num_parts);
+    auto part = part_type(this->ref, mapping, num_parts);
+    auto dpart = part_type(this->exec, dmapping, num_parts);
 
     this->assert_equal(part, dpart);
 }
@@ -170,8 +170,8 @@ TYPED_TEST(Partition, BuildsFromMappingWithAlmostAllPartsEmpty)
         10000, part_dist, this->rand_engine, this->ref);
     gko::Array<comm_index_type> dmapping{this->exec, mapping};
 
-    auto part = part_type::build_from_mapping(this->ref, mapping, num_parts);
-    auto dpart = part_type::build_from_mapping(this->exec, dmapping, num_parts);
+    auto part = part_type(this->ref, mapping, num_parts);
+    auto dpart = part_type(this->exec, dmapping, num_parts);
 
     this->assert_equal(part, dpart);
 }
@@ -184,8 +184,8 @@ TYPED_TEST(Partition, BuildsFromMappingWithAllPartsEmpty)
     gko::Array<comm_index_type> mapping{this->ref, 0};
     gko::Array<comm_index_type> dmapping{this->exec, 0};
 
-    auto part = part_type::build_from_mapping(this->ref, mapping, num_parts);
-    auto dpart = part_type::build_from_mapping(this->exec, dmapping, num_parts);
+    auto part = part_type(this->ref, mapping, num_parts);
+    auto dpart = part_type(this->exec, dmapping, num_parts);
 
     this->assert_equal(part, dpart);
 }
@@ -199,8 +199,8 @@ TYPED_TEST(Partition, BuildsFromMappingWithOnePart)
     mapping.fill(0);
     gko::Array<comm_index_type> dmapping{this->exec, mapping};
 
-    auto part = part_type::build_from_mapping(this->ref, mapping, num_parts);
-    auto dpart = part_type::build_from_mapping(this->exec, dmapping, num_parts);
+    auto part = part_type(this->ref, mapping, num_parts);
+    auto dpart = part_type(this->exec, dmapping, num_parts);
 
     this->assert_equal(part, dpart);
 }
@@ -214,8 +214,8 @@ TYPED_TEST(Partition, BuildsFromContiguous)
                                          {0, 1234, 3134, 4578, 16435, 60000}};
     gko::Array<global_index_type> dranges{this->exec, ranges};
 
-    auto part = part_type::build_from_contiguous(this->ref, ranges);
-    auto dpart = part_type::build_from_contiguous(this->exec, dranges);
+    auto part = part_type(this->ref, ranges);
+    auto dpart = part_type(this->exec, dranges);
 
     this->assert_equal(part, dpart);
 }
@@ -229,8 +229,8 @@ TYPED_TEST(Partition, BuildsFromContiguousWithSomeEmptyParts)
         this->ref, {0, 1234, 3134, 3134, 4578, 16435, 16435, 60000}};
     gko::Array<global_index_type> dranges{this->exec, ranges};
 
-    auto part = part_type::build_from_contiguous(this->ref, ranges);
-    auto dpart = part_type::build_from_contiguous(this->exec, dranges);
+    auto part = part_type(this->ref, ranges);
+    auto dpart = part_type(this->exec, dranges);
 
     this->assert_equal(part, dpart);
 }
@@ -244,8 +244,8 @@ TYPED_TEST(Partition, BuildsFromContiguousWithMostlyEmptyParts)
         this->ref, {0, 0, 3134, 4578, 4578, 4578, 4578, 4578}};
     gko::Array<global_index_type> dranges{this->exec, ranges};
 
-    auto part = part_type::build_from_contiguous(this->ref, ranges);
-    auto dpart = part_type::build_from_contiguous(this->exec, dranges);
+    auto part = part_type(this->ref, ranges);
+    auto dpart = part_type(this->exec, dranges);
 
     this->assert_equal(part, dpart);
 }
@@ -258,8 +258,8 @@ TYPED_TEST(Partition, BuildsFromContiguousWithOnlyEmptyParts)
     gko::Array<global_index_type> ranges{this->ref, {0, 0, 0, 0, 0, 0, 0}};
     gko::Array<global_index_type> dranges{this->exec, ranges};
 
-    auto part = part_type::build_from_contiguous(this->ref, ranges);
-    auto dpart = part_type::build_from_contiguous(this->exec, dranges);
+    auto part = part_type(this->ref, ranges);
+    auto dpart = part_type(this->exec, dranges);
 
     this->assert_equal(part, dpart);
 }
@@ -272,8 +272,8 @@ TYPED_TEST(Partition, BuildsFromContiguousWithOnlyOneEmptyPart)
     gko::Array<global_index_type> ranges{this->ref, {0, 0}};
     gko::Array<global_index_type> dranges{this->exec, ranges};
 
-    auto part = part_type::build_from_contiguous(this->ref, ranges);
-    auto dpart = part_type::build_from_contiguous(this->exec, dranges);
+    auto part = part_type(this->ref, ranges);
+    auto dpart = part_type(this->exec, dranges);
 
     this->assert_equal(part, dpart);
 }
@@ -286,8 +286,8 @@ TYPED_TEST(Partition, BuildsFromContiguousWithSingleEntry)
     gko::Array<global_index_type> ranges{this->ref, {0}};
     gko::Array<global_index_type> dranges{this->exec, ranges};
 
-    auto part = part_type::build_from_contiguous(this->ref, ranges);
-    auto dpart = part_type::build_from_contiguous(this->exec, dranges);
+    auto part = part_type(this->ref, ranges);
+    auto dpart = part_type(this->exec, dranges);
 
     this->assert_equal(part, dpart);
 }
@@ -300,10 +300,8 @@ TYPED_TEST(Partition, BuildsFromGlobalSize)
     const int num_parts = 7;
     const global_index_type global_size = 708;
 
-    auto part = part_type::build_from_global_size_uniform(this->ref, num_parts,
-                                                          global_size);
-    auto dpart = part_type::build_from_global_size_uniform(
-        this->exec, num_parts, global_size);
+    auto part = part_type(this->ref, num_parts, global_size);
+    auto dpart = part_type(this->exec, num_parts, global_size);
 
     this->assert_equal(part, dpart);
 }
@@ -316,10 +314,8 @@ TYPED_TEST(Partition, BuildsFromGlobalSizeEmpty)
     const int num_parts = 7;
     const global_index_type global_size = 0;
 
-    auto part = part_type::build_from_global_size_uniform(this->ref, num_parts,
-                                                          global_size);
-    auto dpart = part_type::build_from_global_size_uniform(
-        this->exec, num_parts, global_size);
+    auto part = part_type(this->ref, num_parts, global_size);
+    auto dpart = part_type(this->exec, num_parts, global_size);
 
     this->assert_equal(part, dpart);
 }
@@ -332,10 +328,8 @@ TYPED_TEST(Partition, BuildsFromGlobalSizeMorePartsThanSize)
     const int num_parts = 77;
     const global_index_type global_size = 13;
 
-    auto part = part_type::build_from_global_size_uniform(this->ref, num_parts,
-                                                          global_size);
-    auto dpart = part_type::build_from_global_size_uniform(
-        this->exec, num_parts, global_size);
+    auto part = part_type(this->ref, num_parts, global_size);
+    auto dpart = part_type(this->exec, num_parts, global_size);
 
     this->assert_equal(part, dpart);
 }
@@ -352,9 +346,9 @@ TYPED_TEST(Partition, IsOrderedTrue)
         std::fill(mapping.get_data() + i * size_per_part,
                   mapping.get_data() + (i + 1) * size_per_part, i);
     }
-    auto dpart = part_type::build_from_mapping(this->exec, mapping, num_parts);
+    auto dpart = part_type(this->exec, mapping, num_parts);
 
-    ASSERT_TRUE(dpart->has_ordered_parts());
+    ASSERT_TRUE(dpart.has_ordered_parts());
 }
 
 
@@ -370,9 +364,9 @@ TYPED_TEST(Partition, IsOrderedFail)
                   mapping.get_data() + (i + 1) * size_per_part,
                   num_parts - 1 - i);
     }
-    auto dpart = part_type::build_from_mapping(this->exec, mapping, num_parts);
+    auto dpart = part_type(this->exec, mapping, num_parts);
 
-    ASSERT_FALSE(dpart->has_ordered_parts());
+    ASSERT_FALSE(dpart.has_ordered_parts());
 }
 
 
@@ -383,10 +377,10 @@ TYPED_TEST(Partition, IsOrderedRandom)
     std::uniform_int_distribution<comm_index_type> part_dist{0, num_parts - 1};
     auto mapping = gko::test::generate_random_array<comm_index_type>(
         10000, part_dist, this->rand_engine, this->ref);
-    auto part = part_type::build_from_mapping(this->ref, mapping, num_parts);
-    auto dpart = part_type::build_from_mapping(this->exec, mapping, num_parts);
+    auto part = part_type(this->ref, mapping, num_parts);
+    auto dpart = part_type(this->exec, mapping, num_parts);
 
-    ASSERT_EQ(part->has_ordered_parts(), dpart->has_ordered_parts());
+    ASSERT_EQ(part.has_ordered_parts(), dpart.has_ordered_parts());
 }
 
 
