@@ -46,6 +46,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "core/distributed/matrix_kernels.hpp"
 #include "core/test/utils.hpp"
+#include "test/utils/executor.hpp"
 
 
 namespace {
@@ -69,10 +70,21 @@ protected:
     using Mtx = gko::matrix::Csr<value_type, local_index_type>;
 
     Matrix()
-        : ref(gko::ReferenceExecutor::create()),
-          exec(gko::CudaExecutor::create(0, ref)),
-          engine(42)
+        : engine(42)
     {}
+
+    void SetUp()
+    {
+        ref = gko::ReferenceExecutor::create();
+        init_executor(ref, exec);
+    }
+
+    void TearDown()
+    {
+        if (exec != nullptr) {
+            ASSERT_NO_THROW(exec->synchronize());
+        }
+    }
 
     void validate(
         const gko::distributed::Partition<local_index_type, global_index_type>*
@@ -85,59 +97,68 @@ protected:
             d_col_partition,
         gko::device_matrix_data<value_type, global_index_type> input)
     {
-        using local_d_md_type =
-            gko::device_matrix_data<value_type, local_index_type>;
         gko::device_matrix_data<value_type, global_index_type> d_input{exec,
                                                                        input};
         for (comm_index_type part = 0; part < row_partition->get_num_parts();
              ++part) {
-            local_d_md_type diag{ref};
-            local_d_md_type offdiag{ref};
-            local_d_md_type d_diag{exec};
-            local_d_md_type d_offdiag{exec};
-            gko::Array<local_index_type> gather_idxs{ref};
-            gko::Array<local_index_type> d_gather_idxs{exec};
-            gko::Array<comm_index_type> recv_sizes{
+            gko::array<local_index_type> diag_row_idxs{ref};
+            gko::array<local_index_type> diag_col_idxs{ref};
+            gko::array<value_type> diag_values{ref};
+            gko::array<local_index_type> d_diag_row_idxs{exec};
+            gko::array<local_index_type> d_diag_col_idxs{exec};
+            gko::array<value_type> d_diag_values{exec};
+            gko::array<local_index_type> offdiag_row_idxs{ref};
+            gko::array<local_index_type> offdiag_col_idxs{ref};
+            gko::array<value_type> offdiag_values{ref};
+            gko::array<local_index_type> d_offdiag_row_idxs{exec};
+            gko::array<local_index_type> d_offdiag_col_idxs{exec};
+            gko::array<value_type> d_offdiag_values{exec};
+            gko::array<local_index_type> gather_idxs{ref};
+            gko::array<local_index_type> d_gather_idxs{exec};
+            gko::array<comm_index_type> recv_sizes{
                 ref,
                 static_cast<gko::size_type>(row_partition->get_num_parts())};
-            gko::Array<comm_index_type> d_recv_sizes{
+            gko::array<comm_index_type> d_recv_sizes{
                 exec,
                 static_cast<gko::size_type>(row_partition->get_num_parts())};
-            gko::Array<global_index_type> local_to_global_col{ref};
-            gko::Array<global_index_type> d_local_to_global_col{exec};
+            gko::array<global_index_type> local_to_global_col{ref};
+            gko::array<global_index_type> d_local_to_global_col{exec};
 
             gko::kernels::reference::distributed_matrix::build_diag_offdiag(
-                ref, input, row_partition, col_partition, part, diag, offdiag,
-                gather_idxs, recv_sizes.get_data(), local_to_global_col);
-            gko::kernels::cuda::distributed_matrix::build_diag_offdiag(
-                exec, d_input, d_row_partition, d_col_partition, part, d_diag,
-                d_offdiag, d_gather_idxs, d_recv_sizes.get_data(),
-                d_local_to_global_col);
+                ref, input, row_partition, col_partition, part, diag_row_idxs,
+                diag_col_idxs, diag_values, offdiag_row_idxs, offdiag_col_idxs,
+                offdiag_values, gather_idxs, recv_sizes.get_data(),
+                local_to_global_col);
+            gko::kernels::EXEC_NAMESPACE::distributed_matrix::build_diag_offdiag(
+                exec, d_input, d_row_partition, d_col_partition, part,
+                d_diag_row_idxs, d_diag_col_idxs, d_diag_values,
+                d_offdiag_row_idxs, d_offdiag_col_idxs, d_offdiag_values,
+                d_gather_idxs, d_recv_sizes.get_data(), d_local_to_global_col);
 
-            assert_device_matrix_data_equal(diag, d_diag);
-            assert_device_matrix_data_equal(offdiag, d_offdiag);
+            assert_device_matrix_data_equal(diag_row_idxs, diag_col_idxs,
+                                            diag_values, d_diag_row_idxs,
+                                            d_diag_col_idxs, d_diag_values);
+            assert_device_matrix_data_equal(
+                offdiag_row_idxs, offdiag_col_idxs, offdiag_values,
+                d_offdiag_row_idxs, d_offdiag_col_idxs, d_offdiag_values);
             GKO_ASSERT_ARRAY_EQ(gather_idxs, d_gather_idxs);
             GKO_ASSERT_ARRAY_EQ(recv_sizes, d_recv_sizes);
             GKO_ASSERT_ARRAY_EQ(local_to_global_col, d_local_to_global_col);
         }
     }
 
-    template <typename Data1, typename Data2>
-    void assert_device_matrix_data_equal(Data1& first, Data2& second)
+    template <typename AI, typename AV>
+    void assert_device_matrix_data_equal(AI& row_idxs, AI& col_idxs, AV& values,
+                                         AI& d_row_idxs, AI& d_col_idxs,
+                                         AV& d_values)
     {
-        auto size_first = first.get_size();
-        auto size_second = second.get_size();
-        auto arrays_first = first.empty_out();
-        auto array_second = second.empty_out();
-
-        GKO_ASSERT_EQUAL_DIMENSIONS(size_first, size_second);
-        GKO_ASSERT_ARRAY_EQ(arrays_first.row_idxs, array_second.row_idxs);
-        GKO_ASSERT_ARRAY_EQ(arrays_first.col_idxs, array_second.col_idxs);
-        GKO_ASSERT_ARRAY_EQ(arrays_first.values, array_second.values);
+        GKO_ASSERT_ARRAY_EQ(row_idxs, d_row_idxs);
+        GKO_ASSERT_ARRAY_EQ(col_idxs, d_col_idxs);
+        GKO_ASSERT_ARRAY_EQ(values, d_values);
     }
 
     std::shared_ptr<gko::ReferenceExecutor> ref;
-    std::shared_ptr<gko::CudaExecutor> exec;
+    std::shared_ptr<gko::EXEC_TYPE> exec;
     std::default_random_engine engine;
 };
 
@@ -149,7 +170,7 @@ TYPED_TEST(Matrix, BuildsDiagOffdiagEmptyIsSameAsRef)
     using value_type = typename TestFixture::value_type;
     using local_index_type = typename TestFixture::local_index_type;
     using global_index_type = typename TestFixture::global_index_type;
-    gko::Array<comm_index_type> mapping{this->ref, {1, 0, 2, 2, 0, 1, 1, 2}};
+    gko::array<comm_index_type> mapping{this->ref, {1, 0, 2, 2, 0, 1, 1, 2}};
     comm_index_type num_parts = 3;
 
     auto partition = gko::distributed::Partition<
@@ -243,9 +264,9 @@ TYPED_TEST(Matrix, BuildsDiagOffdiagEmptyWithColPartitionIsSameAsRef)
     using value_type = typename TestFixture::value_type;
     using local_index_type = typename TestFixture::local_index_type;
     using global_index_type = typename TestFixture::global_index_type;
-    gko::Array<comm_index_type> row_mapping{this->ref,
+    gko::array<comm_index_type> row_mapping{this->ref,
                                             {1, 0, 2, 2, 0, 1, 1, 2}};
-    gko::Array<comm_index_type> col_mapping{this->ref,
+    gko::array<comm_index_type> col_mapping{this->ref,
                                             {0, 0, 2, 2, 2, 1, 1, 1}};
     comm_index_type num_parts = 3;
 
