@@ -236,7 +236,7 @@ GKO_STUB_INDEX_TYPE(GKO_DECLARE_INDEX_SET_LOCAL_TO_GLOBAL_KERNEL);
 }  // namespace index_set
 
 
-namespace partition {
+namespace distributed_partition {
 
 
 GKO_STUB(GKO_PARTITION_COUNT_RANGES);
@@ -247,7 +247,7 @@ GKO_STUB_LOCAL_GLOBAL_TYPE(GKO_DECLARE_PARTITION_BUILD_STARTING_INDICES);
 GKO_STUB_LOCAL_GLOBAL_TYPE(GKO_DECLARE_PARTITION_IS_ORDERED);
 
 
-}  // namespace partition
+}  // namespace distributed_partition
 
 
 namespace distributed_vector {

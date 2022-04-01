@@ -47,13 +47,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace gko {
 namespace kernels {
 namespace cuda {
-namespace partition {
+namespace distributed_partition {
 
 
 #include "common/cuda_hip/distributed/partition_kernels.hpp.inc"
 
 
-}  // namespace partition
+}  // namespace distributed_partition
 }  // namespace cuda
 }  // namespace kernels
 }  // namespace gko

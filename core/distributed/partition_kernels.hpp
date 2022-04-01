@@ -99,7 +99,7 @@ namespace kernels {
     template <typename LocalIndexType, typename GlobalIndexType>   \
     GKO_DECLARE_PARTITION_IS_ORDERED(LocalIndexType, GlobalIndexType)
 
-GKO_DECLARE_FOR_ALL_EXECUTOR_NAMESPACES(partition,
+GKO_DECLARE_FOR_ALL_EXECUTOR_NAMESPACES(distributed_partition,
                                         GKO_DECLARE_ALL_AS_TEMPLATES);
 
 

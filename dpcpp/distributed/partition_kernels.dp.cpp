@@ -36,7 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace gko {
 namespace kernels {
 namespace dpcpp {
-namespace partition {
+namespace distributed_partition {
 
 
 // TODO: wait until https://github.com/oneapi-src/oneDPL/pull/388 is release to
@@ -54,7 +54,7 @@ GKO_INSTANTIATE_FOR_EACH_LOCAL_GLOBAL_INDEX_TYPE(
     GKO_DECLARE_PARTITION_BUILD_STARTING_INDICES);
 
 
-}  // namespace partition
+}  // namespace distributed_partition
 }  // namespace dpcpp
 }  // namespace kernels
 }  // namespace gko

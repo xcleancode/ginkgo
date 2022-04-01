@@ -38,20 +38,23 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace gko {
 namespace distributed {
-namespace partition {
+namespace distributed_partition {
 
 
-GKO_REGISTER_OPERATION(count_ranges, partition::count_ranges);
-GKO_REGISTER_OPERATION(build_from_mapping, partition::build_from_mapping);
-GKO_REGISTER_OPERATION(build_from_contiguous, partition::build_from_contiguous);
+GKO_REGISTER_OPERATION(count_ranges, distributed_partition::count_ranges);
+GKO_REGISTER_OPERATION(build_from_mapping,
+                       distributed_partition::build_from_mapping);
+GKO_REGISTER_OPERATION(build_from_contiguous,
+                       distributed_partition::build_from_contiguous);
 GKO_REGISTER_OPERATION(build_ranges_from_global_size,
-                       partition::build_ranges_from_global_size);
+                       distributed_partition::build_ranges_from_global_size);
 GKO_REGISTER_OPERATION(build_starting_indices,
-                       partition::build_starting_indices);
-GKO_REGISTER_OPERATION(has_ordered_parts, partition::has_ordered_parts);
+                       distributed_partition::build_starting_indices);
+GKO_REGISTER_OPERATION(has_ordered_parts,
+                       distributed_partition::has_ordered_parts);
 
 
-}  // namespace partition
+}  // namespace distributed_partition
 
 
 template <typename LocalIndexType, typename GlobalIndexType>
@@ -62,11 +65,12 @@ Partition<LocalIndexType, GlobalIndexType>::build_from_mapping(
 {
     auto local_mapping = make_temporary_clone(exec, &mapping);
     size_type num_ranges{};
-    exec->run(partition::make_count_ranges(*local_mapping.get(), num_ranges));
+    exec->run(distributed_partition::make_count_ranges(*local_mapping.get(),
+                                                       num_ranges));
     auto result = Partition::create(exec, num_parts, num_ranges);
-    exec->run(partition::make_build_from_mapping(*local_mapping.get(),
-                                                 result->offsets_.get_data(),
-                                                 result->part_ids_.get_data()));
+    exec->run(distributed_partition::make_build_from_mapping(
+        *local_mapping.get(), result->offsets_.get_data(),
+        result->part_ids_.get_data()));
     result->finalize_construction();
     return result;
 }
@@ -81,7 +85,7 @@ Partition<LocalIndexType, GlobalIndexType>::build_from_contiguous(
     auto result = Partition::create(
         exec, static_cast<comm_index_type>(ranges.get_num_elems() - 1),
         ranges.get_num_elems() - 1);
-    exec->run(partition::make_build_from_contiguous(
+    exec->run(distributed_partition::make_build_from_contiguous(
         *local_ranges.get(), result->offsets_.get_data(),
         result->part_ids_.get_data()));
     result->finalize_construction();
@@ -96,7 +100,7 @@ Partition<LocalIndexType, GlobalIndexType>::build_from_global_size_uniform(
     GlobalIndexType global_size)
 {
     Array<GlobalIndexType> ranges(exec, num_parts + 1);
-    exec->run(partition::make_build_ranges_from_global_size(
+    exec->run(distributed_partition::make_build_ranges_from_global_size(
         num_parts, global_size, ranges));
     return Partition::build_from_contiguous(exec, ranges);
 }
@@ -106,7 +110,7 @@ template <typename LocalIndexType, typename GlobalIndexType>
 void Partition<LocalIndexType, GlobalIndexType>::finalize_construction()
 {
     auto exec = offsets_.get_executor();
-    exec->run(partition::make_build_starting_indices(
+    exec->run(distributed_partition::make_build_starting_indices(
         offsets_.get_const_data(), part_ids_.get_const_data(), get_num_ranges(),
         get_num_parts(), num_empty_parts_, starting_indices_.get_data(),
         part_sizes_.get_data()));
@@ -129,7 +133,8 @@ bool Partition<LocalIndexType, GlobalIndexType>::has_ordered_parts()
     if (this->has_connected_parts()) {
         auto exec = this->get_executor();
         bool has_ordered_parts;
-        exec->run(partition::make_has_ordered_parts(this, &has_ordered_parts));
+        exec->run(distributed_partition::make_has_ordered_parts(
+            this, &has_ordered_parts));
         return has_ordered_parts;
     } else {
         return false;

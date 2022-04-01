@@ -41,7 +41,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace gko {
 namespace kernels {
 namespace GKO_DEVICE_NAMESPACE {
-namespace partition {
+namespace distributed_partition {
 
 
 using distributed::comm_index_type;
@@ -175,7 +175,7 @@ GKO_INSTANTIATE_FOR_EACH_LOCAL_GLOBAL_INDEX_TYPE(
     GKO_DECLARE_PARTITION_IS_ORDERED);
 
 
-}  // namespace partition
+}  // namespace distributed_partition
 }  // namespace GKO_DEVICE_NAMESPACE
 }  // namespace kernels
 }  // namespace gko

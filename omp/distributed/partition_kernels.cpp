@@ -45,7 +45,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace gko {
 namespace kernels {
 namespace omp {
-namespace partition {
+namespace distributed_partition {
 
 
 template <typename LocalIndexType, typename GlobalIndexType>
@@ -100,7 +100,7 @@ GKO_INSTANTIATE_FOR_EACH_LOCAL_GLOBAL_INDEX_TYPE(
     GKO_DECLARE_PARTITION_BUILD_STARTING_INDICES);
 
 
-}  // namespace partition
+}  // namespace distributed_partition
 }  // namespace omp
 }  // namespace kernels
 }  // namespace gko

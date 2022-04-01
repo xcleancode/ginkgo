@@ -36,7 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace gko {
 namespace kernels {
 namespace reference {
-namespace partition {
+namespace distributed_partition {
 
 
 void count_ranges(std::shared_ptr<const DefaultExecutor> exec,
@@ -156,7 +156,7 @@ void has_ordered_parts(
 GKO_INSTANTIATE_FOR_EACH_LOCAL_GLOBAL_INDEX_TYPE(
     GKO_DECLARE_PARTITION_IS_ORDERED);
 
-}  // namespace partition
+}  // namespace distributed_partition
 }  // namespace reference
 }  // namespace kernels
 }  // namespace gko
