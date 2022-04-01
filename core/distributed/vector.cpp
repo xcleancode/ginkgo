@@ -123,19 +123,19 @@ template <typename ValueType>
 template <typename LocalIndexType, typename GlobalIndexType>
 void Vector<ValueType>::read_distributed(
     const device_matrix_data<ValueType, GlobalIndexType>& data,
-    const partition<LocalIndexType, GlobalIndexType>* partition)
+    const partition<LocalIndexType, GlobalIndexType>& partition)
 {
     auto exec = this->get_executor();
     auto global_cols = data.get_size()[1];
     this->resize(
-        dim<2>(partition->get_size(), global_cols),
-        dim<2>(partition->get_part_size(this->get_communicator().rank()),
+        dim<2>(partition.get_size(), global_cols),
+        dim<2>(partition.get_part_size(this->get_communicator().rank()),
                global_cols));
 
     auto rank = this->get_communicator().rank();
     local_.fill(zero<ValueType>());
     exec->run(vector::make_build_local(
-        data, make_temporary_clone(exec, partition).get(), rank, &local_));
+        data, make_temporary_clone(exec, &partition).get(), rank, &local_));
 }
 
 
@@ -143,7 +143,7 @@ template <typename ValueType>
 template <typename LocalIndexType, typename GlobalIndexType>
 void Vector<ValueType>::read_distributed(
     const matrix_data<ValueType, GlobalIndexType>& data,
-    const partition<LocalIndexType, GlobalIndexType>* partition)
+    const partition<LocalIndexType, GlobalIndexType>& partition)
 
 {
     this->read_distributed(
@@ -475,11 +475,11 @@ GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE(GKO_DECLARE_DISTRIBUTED_VECTOR);
     ValueType, LocalIndexType, GlobalIndexType)                                \
     void Vector<ValueType>::read_distributed<LocalIndexType, GlobalIndexType>( \
         const device_matrix_data<ValueType, GlobalIndexType>& data,            \
-        const partition<LocalIndexType, GlobalIndexType>* partition);          \
+        const partition<LocalIndexType, GlobalIndexType>& partition);          \
     template void                                                              \
     Vector<ValueType>::read_distributed<LocalIndexType, GlobalIndexType>(      \
         const matrix_data<ValueType, GlobalIndexType>& data,                   \
-        const partition<LocalIndexType, GlobalIndexType>* partition)
+        const partition<LocalIndexType, GlobalIndexType>& partition)
 
 GKO_INSTANTIATE_FOR_EACH_VALUE_AND_LOCAL_GLOBAL_INDEX_TYPE(
     GKO_DECLARE_DISTRIBUTED_VECTOR_READ_DISTRIBUTED);

@@ -200,14 +200,14 @@ class Vector;
  *
  * The Matrix should be filled using the read_distributed method, e.g.
  * ```
- * auto part = partition<...>::build_from_mapping(...);
+ * auto part = partition<...>(...);
  * auto mat = Matrix<...>::create(exec, comm);
  * mat->read_distributed(matrix_data, part);
  * ```
  * or if different partitions for the rows and columns are used:
  * ```
- * auto row_part = partition<...>::build_from_mapping(...);
- * auto col_part = partition<...>::build_from_mapping(...);
+ * auto row_part = partition<...>(...);
+ * auto col_part = partition<...>(...);
  * auto mat = Matrix<...>::create(exec, comm);
  * mat->read_distributed(matrix_data, row_part, col_part);
  * ```
@@ -277,7 +277,7 @@ public:
      */
     void read_distributed(
         const device_matrix_data<value_type, global_index_type>& data,
-        const partition<local_index_type, global_index_type>* partition);
+        const partition<local_index_type, global_index_type>& partition);
 
     /**
      * Reads a square matrix from the matrix_data structure and a global
@@ -290,7 +290,7 @@ public:
      */
     void read_distributed(
         const matrix_data<value_type, global_index_type>& data,
-        const partition<local_index_type, global_index_type>* partition);
+        const partition<local_index_type, global_index_type>& partition);
 
     /**
      * Reads a matrix from the device_matrix_data structure, a global row
@@ -309,8 +309,8 @@ public:
      */
     void read_distributed(
         const device_matrix_data<value_type, global_index_type>& data,
-        const partition<local_index_type, global_index_type>* row_partition,
-        const partition<local_index_type, global_index_type>* col_partition);
+        const partition<local_index_type, global_index_type>& row_partition,
+        const partition<local_index_type, global_index_type>& col_partition);
 
     /**
      * Reads a matrix from the matrix_data structure, a global row partition,
@@ -323,8 +323,8 @@ public:
      */
     void read_distributed(
         const matrix_data<value_type, global_index_type>& data,
-        const partition<local_index_type, global_index_type>* row_partition,
-        const partition<local_index_type, global_index_type>* col_partition);
+        const partition<local_index_type, global_index_type>& row_partition,
+        const partition<local_index_type, global_index_type>& col_partition);
 
     /**
      * Get read access to the local diagonal matrix

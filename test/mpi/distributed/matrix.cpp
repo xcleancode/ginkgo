@@ -108,6 +108,7 @@ public:
           comm(MPI_COMM_WORLD),
           size{53, 53},
           num_rhs(11),
+          part(ref),
           logger(gko::share(HostToDeviceLogger::create(exec))),
           engine(42)
     {
@@ -133,7 +134,7 @@ public:
                 std::uniform_int_distribution<
                     gko::distributed::comm_index_type>(0, num_parts - 1),
                 engine, ref);
-        part = part_type::build_from_mapping(ref, mapping, num_parts);
+        part = part_type(ref, mapping, num_parts);
     }
 
     void SetUp() override
@@ -156,7 +157,7 @@ public:
             size[0], size[1],
             std::uniform_int_distribution<gko::size_type>(0, size[1]),
             std::normal_distribution<value_type>(), engine);
-        host->read_distributed(md, part.get());
+        host->read_distributed(md, part);
         device = gko::clone(exec, host);
     }
 
@@ -169,7 +170,7 @@ public:
             size[0], num_rhs,
             std::uniform_int_distribution<gko::size_type>(num_rhs, num_rhs),
             std::normal_distribution<value_type>(), engine);
-        host->read_distributed(md, part.get());
+        host->read_distributed(md, part);
         device = gko::clone(exec, host);
     }
 
@@ -190,7 +191,7 @@ public:
     gko::dim<2> size;
     gko::size_type num_rhs;
 
-    std::unique_ptr<part_type> part;
+    part_type part;
 
     std::unique_ptr<dist_mtx_type> mat;
     std::unique_ptr<dist_mtx_type> dmat;

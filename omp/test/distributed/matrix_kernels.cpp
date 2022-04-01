@@ -75,13 +75,13 @@ protected:
     {}
 
     void validate(
-        const gko::distributed::partition<local_index_type, global_index_type>*
+        const gko::distributed::partition<local_index_type, global_index_type>&
             row_partition,
-        const gko::distributed::partition<local_index_type, global_index_type>*
+        const gko::distributed::partition<local_index_type, global_index_type>&
             col_partition,
-        const gko::distributed::partition<local_index_type, global_index_type>*
+        const gko::distributed::partition<local_index_type, global_index_type>&
             d_row_partition,
-        const gko::distributed::partition<local_index_type, global_index_type>*
+        const gko::distributed::partition<local_index_type, global_index_type>&
             d_col_partition,
         gko::device_matrix_data<value_type, global_index_type> input)
     {
@@ -89,7 +89,7 @@ protected:
             gko::device_matrix_data<value_type, local_index_type>;
         gko::device_matrix_data<value_type, global_index_type> d_input{exec,
                                                                        input};
-        for (comm_index_type part = 0; part < row_partition->get_num_parts();
+        for (comm_index_type part = 0; part < row_partition.get_num_parts();
              ++part) {
             local_d_md_type diag{ref};
             local_d_md_type offdiag{ref};
@@ -98,19 +98,19 @@ protected:
             gko::Array<local_index_type> gather_idxs{ref};
             gko::Array<local_index_type> d_gather_idxs{exec};
             gko::Array<comm_index_type> recv_offsets{
-                ref, static_cast<gko::size_type>(
-                         row_partition->get_num_parts() + 1)};
+                ref,
+                static_cast<gko::size_type>(row_partition.get_num_parts() + 1)};
             gko::Array<comm_index_type> d_recv_offsets{
-                exec, static_cast<gko::size_type>(
-                          row_partition->get_num_parts() + 1)};
+                exec,
+                static_cast<gko::size_type>(row_partition.get_num_parts() + 1)};
             gko::Array<global_index_type> local_to_global_col{ref};
             gko::Array<global_index_type> d_local_to_global_col{exec};
 
             gko::kernels::reference::distributed_matrix::build_diag_offdiag(
-                ref, input, row_partition, col_partition, part, diag, offdiag,
+                ref, input, &row_partition, &col_partition, part, diag, offdiag,
                 gather_idxs, recv_offsets.get_data(), local_to_global_col);
             gko::kernels::omp::distributed_matrix::build_diag_offdiag(
-                exec, d_input, d_row_partition, d_col_partition, part, d_diag,
+                exec, d_input, &d_row_partition, &d_col_partition, part, d_diag,
                 d_offdiag, d_gather_idxs, d_recv_offsets.get_data(),
                 d_local_to_global_col);
 
@@ -152,17 +152,15 @@ TYPED_TEST(Matrix, BuildsDiagOffdiagEmptyIsSameAsRef)
     gko::Array<comm_index_type> mapping{this->ref, {1, 0, 2, 2, 0, 1, 1, 2}};
     comm_index_type num_parts = 3;
 
-    auto partition = gko::distributed::partition<
-        local_index_type, global_index_type>::build_from_mapping(this->ref,
-                                                                 mapping,
-                                                                 num_parts);
-    auto d_partition = gko::distributed::partition<
-        local_index_type, global_index_type>::build_from_mapping(this->exec,
-                                                                 mapping,
-                                                                 num_parts);
+    auto partition =
+        gko::distributed::partition<local_index_type, global_index_type>(
+            this->ref, mapping, num_parts);
+    auto d_partition =
+        gko::distributed::partition<local_index_type, global_index_type>(
+            this->exec, mapping, num_parts);
 
     this->validate(
-        partition.get(), partition.get(), d_partition.get(), d_partition.get(),
+        partition, partition, d_partition, d_partition,
         gko::device_matrix_data<value_type, global_index_type>{this->ref});
 }
 
@@ -188,17 +186,14 @@ TYPED_TEST(Matrix, BuildsLocalSmallIsEquivalentToRef)
         std::uniform_real_distribution<gko::remove_complex<value_type>>(0, 1),
         this->engine, this->ref);
 
-    auto partition = gko::distributed::partition<
-        local_index_type, global_index_type>::build_from_mapping(this->ref,
-                                                                 mapping,
-                                                                 num_parts);
-    auto d_partition = gko::distributed::partition<
-        local_index_type, global_index_type>::build_from_mapping(this->exec,
-                                                                 mapping,
-                                                                 num_parts);
+    auto partition =
+        gko::distributed::partition<local_index_type, global_index_type>(
+            this->ref, mapping, num_parts);
+    auto d_partition =
+        gko::distributed::partition<local_index_type, global_index_type>(
+            this->exec, mapping, num_parts);
 
-    this->validate(partition.get(), partition.get(), d_partition.get(),
-                   d_partition.get(), input);
+    this->validate(partition, partition, d_partition, d_partition, input);
 }
 
 
@@ -224,17 +219,14 @@ TYPED_TEST(Matrix, BuildsLocalIsEquivalentToRef)
         std::uniform_real_distribution<gko::remove_complex<value_type>>(0, 1),
         this->engine, this->ref);
 
-    auto partition = gko::distributed::partition<
-        local_index_type, global_index_type>::build_from_mapping(this->ref,
-                                                                 mapping,
-                                                                 num_parts);
-    auto d_partition = gko::distributed::partition<
-        local_index_type, global_index_type>::build_from_mapping(this->exec,
-                                                                 mapping,
-                                                                 num_parts);
+    auto partition =
+        gko::distributed::partition<local_index_type, global_index_type>(
+            this->ref, mapping, num_parts);
+    auto d_partition =
+        gko::distributed::partition<local_index_type, global_index_type>(
+            this->exec, mapping, num_parts);
 
-    this->validate(partition.get(), partition.get(), d_partition.get(),
-                   d_partition.get(), input);
+    this->validate(partition, partition, d_partition, d_partition, input);
 }
 
 
@@ -249,26 +241,21 @@ TYPED_TEST(Matrix, BuildsDiagOffdiagEmptyWithColPartitionIsSameAsRef)
                                             {0, 0, 2, 2, 2, 1, 1, 1}};
     comm_index_type num_parts = 3;
 
-    auto row_partition = gko::distributed::partition<
-        local_index_type, global_index_type>::build_from_mapping(this->ref,
-                                                                 row_mapping,
-                                                                 num_parts);
-    auto d_row_partition = gko::distributed::partition<
-        local_index_type, global_index_type>::build_from_mapping(this->exec,
-                                                                 row_mapping,
-                                                                 num_parts);
-    auto col_partition = gko::distributed::partition<
-        local_index_type, global_index_type>::build_from_mapping(this->ref,
-                                                                 col_mapping,
-                                                                 num_parts);
-    auto d_col_partition = gko::distributed::partition<
-        local_index_type, global_index_type>::build_from_mapping(this->exec,
-                                                                 col_mapping,
-                                                                 num_parts);
+    auto row_partition =
+        gko::distributed::partition<local_index_type, global_index_type>(
+            this->ref, row_mapping, num_parts);
+    auto d_row_partition =
+        gko::distributed::partition<local_index_type, global_index_type>(
+            this->exec, row_mapping, num_parts);
+    auto col_partition =
+        gko::distributed::partition<local_index_type, global_index_type>(
+            this->ref, col_mapping, num_parts);
+    auto d_col_partition =
+        gko::distributed::partition<local_index_type, global_index_type>(
+            this->exec, col_mapping, num_parts);
 
     this->validate(
-        row_partition.get(), col_partition.get(), d_row_partition.get(),
-        d_col_partition.get(),
+        row_partition, col_partition, d_row_partition, d_col_partition,
         gko::device_matrix_data<value_type, global_index_type>{this->ref});
 }
 
@@ -300,25 +287,21 @@ TYPED_TEST(Matrix, BuildsLocalSmallWithColPartitionIsEquivalentToRef)
         std::uniform_real_distribution<gko::remove_complex<value_type>>(0, 1),
         this->engine, this->ref);
 
-    auto row_partition = gko::distributed::partition<
-        local_index_type, global_index_type>::build_from_mapping(this->ref,
-                                                                 row_mapping,
-                                                                 num_parts);
-    auto d_row_partition = gko::distributed::partition<
-        local_index_type, global_index_type>::build_from_mapping(this->exec,
-                                                                 row_mapping,
-                                                                 num_parts);
-    auto col_partition = gko::distributed::partition<
-        local_index_type, global_index_type>::build_from_mapping(this->ref,
-                                                                 col_mapping,
-                                                                 num_parts);
-    auto d_col_partition = gko::distributed::partition<
-        local_index_type, global_index_type>::build_from_mapping(this->exec,
-                                                                 col_mapping,
-                                                                 num_parts);
+    auto row_partition =
+        gko::distributed::partition<local_index_type, global_index_type>(
+            this->ref, row_mapping, num_parts);
+    auto d_row_partition =
+        gko::distributed::partition<local_index_type, global_index_type>(
+            this->exec, row_mapping, num_parts);
+    auto col_partition =
+        gko::distributed::partition<local_index_type, global_index_type>(
+            this->ref, col_mapping, num_parts);
+    auto d_col_partition =
+        gko::distributed::partition<local_index_type, global_index_type>(
+            this->exec, col_mapping, num_parts);
 
-    this->validate(row_partition.get(), col_partition.get(),
-                   d_row_partition.get(), d_col_partition.get(), input);
+    this->validate(row_partition, col_partition, d_row_partition,
+                   d_col_partition, input);
 }
 
 
@@ -350,25 +333,21 @@ TYPED_TEST(Matrix, BuildsLocalWithColPartitionIsEquivalentToRef)
         std::uniform_real_distribution<gko::remove_complex<value_type>>(0, 1),
         this->engine, this->ref);
 
-    auto row_partition = gko::distributed::partition<
-        local_index_type, global_index_type>::build_from_mapping(this->ref,
-                                                                 row_mapping,
-                                                                 num_parts);
-    auto d_row_partition = gko::distributed::partition<
-        local_index_type, global_index_type>::build_from_mapping(this->exec,
-                                                                 row_mapping,
-                                                                 num_parts);
-    auto col_partition = gko::distributed::partition<
-        local_index_type, global_index_type>::build_from_mapping(this->ref,
-                                                                 col_mapping,
-                                                                 num_parts);
-    auto d_col_partition = gko::distributed::partition<
-        local_index_type, global_index_type>::build_from_mapping(this->exec,
-                                                                 col_mapping,
-                                                                 num_parts);
+    auto row_partition =
+        gko::distributed::partition<local_index_type, global_index_type>(
+            this->ref, row_mapping, num_parts);
+    auto d_row_partition =
+        gko::distributed::partition<local_index_type, global_index_type>(
+            this->exec, row_mapping, num_parts);
+    auto col_partition =
+        gko::distributed::partition<local_index_type, global_index_type>(
+            this->ref, col_mapping, num_parts);
+    auto d_col_partition =
+        gko::distributed::partition<local_index_type, global_index_type>(
+            this->exec, col_mapping, num_parts);
 
-    this->validate(row_partition.get(), col_partition.get(),
-                   d_row_partition.get(), d_col_partition.get(), input);
+    this->validate(row_partition, col_partition, d_row_partition,
+                   d_col_partition, input);
 }
 
 }  // namespace

@@ -106,8 +106,7 @@ public:
     VectorCreation()
         : ref(gko::ReferenceExecutor::create()),
           comm(MPI_COMM_WORLD),
-          part(gko::share(part_type::build_from_contiguous(
-              this->ref, {ref, {0, 2, 4, 6}}))),
+          part(ref, {ref, {0, 2, 4, 6}}),
           local_size{4, 11},
           size{local_size[1] * comm.size(), 11},
           md{{0, 1}, {2, 3}, {4, 5}, {6, 7}, {8, 9}, {10, 11}},
@@ -130,7 +129,7 @@ public:
     std::shared_ptr<gko::Executor> ref;
     std::shared_ptr<gko::EXEC_TYPE> exec;
     gko::mpi::communicator comm;
-    std::shared_ptr<part_type> part;
+    part_type part;
 
     gko::dim<2> local_size;
     gko::dim<2> size;
@@ -158,7 +157,7 @@ TYPED_TEST(VectorCreation, CanReadGlobalMatrixData)
         {{8, 9}, {10, 11}},
     };
 
-    vec->read_distributed(this->md, this->part.get());
+    vec->read_distributed(this->md, this->part);
 
     GKO_ASSERT_EQUAL_DIMENSIONS(vec->get_size(), gko::dim<2>(6, 2));
     GKO_ASSERT_EQUAL_DIMENSIONS(vec->get_local_vector()->get_size(),
@@ -170,12 +169,11 @@ TYPED_TEST(VectorCreation, CanReadGlobalMatrixData)
 TYPED_TEST(VectorCreation, CanReadGlobalMatrixDataSomeEmpty)
 {
     using part_type = typename TestFixture::part_type;
-    auto part = gko::share(part_type::build_from_contiguous(
-        this->exec, {this->exec, {0, 0, 6, 6}}));
+    auto part = part_type(this->exec, {this->exec, {0, 0, 6, 6}});
     auto vec = TestFixture::dist_vec_type::create(this->exec, this->comm);
     auto rank = this->comm.rank();
 
-    vec->read_distributed(this->md, part.get());
+    vec->read_distributed(this->md, part);
 
     GKO_ASSERT_EQUAL_DIMENSIONS(vec->get_size(), gko::dim<2>(6, 2));
     if (rank == 1) {
@@ -206,8 +204,7 @@ TYPED_TEST(VectorCreation, CanReadGlobalDeviceMatrixData)
             this->exec, I<index_type>{0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1}},
         gko::Array<value_type>{
             this->exec, I<value_type>{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}}};
-    auto part = gko::share(part_type::build_from_contiguous(
-        this->exec, {this->exec, {0, 2, 4, 6}}));
+    auto part = part_type(this->exec, {this->exec, {0, 2, 4, 6}});
     auto vec = TestFixture::dist_vec_type::create(this->exec, this->comm);
     auto rank = this->comm.rank();
     I<I<value_type>> ref_data[3] = {
@@ -216,7 +213,7 @@ TYPED_TEST(VectorCreation, CanReadGlobalDeviceMatrixData)
         {{8, 9}, {10, 11}},
     };
 
-    vec->read_distributed(md, part.get());
+    vec->read_distributed(md, part);
 
     GKO_ASSERT_EQUAL_DIMENSIONS(vec->get_size(), gko::dim<2>(6, 2));
     GKO_ASSERT_EQUAL_DIMENSIONS(vec->get_local_vector()->get_size(),
@@ -231,8 +228,7 @@ TYPED_TEST(VectorCreation, CanReadGlobalMatrixDataScattered)
     using part_type = typename TestFixture::part_type;
     using value_type = typename TestFixture::value_type;
     md_type md{{0, 1}, {2, 3}, {4, 5}, {6, 7}, {8, 9}, {10, 11}};
-    auto part = gko::share(part_type::build_from_mapping(
-        this->exec, {this->exec, {0, 1, 2, 0, 2, 0}}, 3));
+    auto part = part_type(this->exec, {this->exec, {0, 1, 2, 0, 2, 0}}, 3);
     auto vec = TestFixture::dist_vec_type::create(this->exec, this->comm);
     auto rank = this->comm.rank();
     gko::dim<2> ref_size[3] = {{3, 2}, {1, 2}, {2, 2}};
@@ -242,7 +238,7 @@ TYPED_TEST(VectorCreation, CanReadGlobalMatrixDataScattered)
         {{4, 5}, {8, 9}},
     };
 
-    vec->read_distributed(md, part.get());
+    vec->read_distributed(md, part);
 
     GKO_ASSERT_EQUAL_DIMENSIONS(vec->get_size(), gko::dim<2>(6, 2));
     GKO_ASSERT_EQUAL_DIMENSIONS(vec->get_local_vector()->get_size(),
@@ -260,8 +256,7 @@ TYPED_TEST(VectorCreation, CanReadLocalMatrixData)
         {gko::dim<2>{6, 2}, {{0, 0, 0}, {0, 1, 1}, {1, 0, 2}, {1, 1, 3}}},
         {gko::dim<2>{6, 2}, {{2, 0, 4}, {2, 1, 5}, {3, 0, 6}, {3, 1, 7}}},
         {gko::dim<2>{6, 2}, {{4, 0, 8}, {4, 1, 9}, {5, 0, 10}, {5, 1, 11}}}};
-    auto part = gko::share(part_type::build_from_contiguous(
-        this->exec, {this->exec, {0, 2, 4, 6}}));
+    auto part = part_type(this->exec, {this->exec, {0, 2, 4, 6}});
     auto vec = TestFixture::dist_vec_type::create(this->exec, this->comm);
     auto rank = this->comm.rank();
     I<I<value_type>> ref_data[3] = {
@@ -270,7 +265,7 @@ TYPED_TEST(VectorCreation, CanReadLocalMatrixData)
         {{8, 9}, {10, 11}},
     };
 
-    vec->read_distributed(md[rank], part.get());
+    vec->read_distributed(md[rank], part);
 
     GKO_ASSERT_EQUAL_DIMENSIONS(vec->get_size(), gko::dim<2>(6, 2));
     GKO_ASSERT_EQUAL_DIMENSIONS(vec->get_local_vector()->get_size(),
@@ -295,12 +290,11 @@ TYPED_TEST(VectorCreation, CanReadLocalMatrixDataSomeEmpty)
                        {5, 0, 10}, {5, 1, 11}}},
                      // clang-format on
                      {gko::dim<2>{6, 2}, {}}};
-    auto part = gko::share(part_type::build_from_contiguous(
-        this->exec, {this->exec, {0, 0, 6, 6}}));
+    auto part = part_type(this->exec, {this->exec, {0, 0, 6, 6}});
     auto vec = TestFixture::dist_vec_type::create(this->exec, this->comm);
     auto rank = this->comm.rank();
 
-    vec->read_distributed(md[rank], part.get());
+    vec->read_distributed(md[rank], part);
 
     GKO_ASSERT_EQUAL_DIMENSIONS(vec->get_size(), gko::dim<2>(6, 2));
     if (rank == 1) {
@@ -393,7 +387,7 @@ public:
                 std::uniform_int_distribution<
                     gko::distributed::comm_index_type>(0, num_parts - 1),
                 engine, ref);
-        auto part = part_type::build_from_mapping(ref, mapping, num_parts);
+        auto part = part_type(ref, mapping, num_parts);
 
         auto md_x = gko::test::generate_random_matrix_data<value_type,
                                                            global_index_type>(
@@ -403,7 +397,7 @@ public:
             engine);
         dense_x->read(md_x);
         auto tmp_x = dist_vec_type::create(ref, comm);
-        tmp_x->read_distributed(md_x, part.get());
+        tmp_x->read_distributed(md_x, part);
         x = gko::clone(exec, tmp_x);
 
         auto md_y = gko::test::generate_random_matrix_data<value_type,
@@ -414,7 +408,7 @@ public:
             engine);
         dense_y->read(md_y);
         auto tmp_y = dist_vec_type::create(ref, comm);
-        tmp_y->read_distributed(md_y, part.get());
+        tmp_y->read_distributed(md_y, part);
         y = gko::clone(exec, tmp_y);
     }
 

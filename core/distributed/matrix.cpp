@@ -128,21 +128,21 @@ void Matrix<ValueType, LocalIndexType, GlobalIndexType>::move_to(
 template <typename ValueType, typename LocalIndexType, typename GlobalIndexType>
 void Matrix<ValueType, LocalIndexType, GlobalIndexType>::read_distributed(
     const device_matrix_data<value_type, global_index_type>& data,
-    const partition<local_index_type, global_index_type>* row_partition,
-    const partition<local_index_type, global_index_type>* col_partition)
+    const partition<local_index_type, global_index_type>& row_partition,
+    const partition<local_index_type, global_index_type>& col_partition)
 {
     const auto comm = this->get_communicator();
-    GKO_ASSERT_EQ(data.get_size()[0], row_partition->get_size());
-    GKO_ASSERT_EQ(data.get_size()[1], col_partition->get_size());
-    GKO_ASSERT_EQ(comm.size(), row_partition->get_num_parts());
-    GKO_ASSERT_EQ(comm.size(), col_partition->get_num_parts());
+    GKO_ASSERT_EQ(data.get_size()[0], row_partition.get_size());
+    GKO_ASSERT_EQ(data.get_size()[1], col_partition.get_size());
+    GKO_ASSERT_EQ(comm.size(), row_partition.get_num_parts());
+    GKO_ASSERT_EQ(comm.size(), col_partition.get_num_parts());
     auto exec = this->get_executor();
     auto local_part = comm.rank();
 
     // set up LinOp sizes
-    auto num_parts = static_cast<size_type>(row_partition->get_num_parts());
-    auto global_num_rows = row_partition->get_size();
-    auto global_num_cols = col_partition->get_size();
+    auto num_parts = static_cast<size_type>(row_partition.get_num_parts());
+    auto global_num_rows = row_partition.get_size();
+    auto global_num_cols = col_partition.get_size();
     dim<2> global_dim{global_num_rows, global_num_cols};
     this->set_size(global_dim);
 
@@ -154,8 +154,8 @@ void Matrix<ValueType, LocalIndexType, GlobalIndexType>::read_distributed(
 
     // build diagonal, off-diagonal matrix and communication structures
     exec->run(matrix::make_build_diag_offdiag(
-        data, make_temporary_clone(exec, row_partition).get(),
-        make_temporary_clone(exec, col_partition).get(), local_part, diag_data,
+        data, make_temporary_clone(exec, &row_partition).get(),
+        make_temporary_clone(exec, &col_partition).get(), local_part, diag_data,
         offdiag_data, recv_gather_idxs, recv_offsets_array.get_data(),
         local_to_global_ghost_));
 
@@ -196,8 +196,8 @@ void Matrix<ValueType, LocalIndexType, GlobalIndexType>::read_distributed(
 template <typename ValueType, typename LocalIndexType, typename GlobalIndexType>
 void Matrix<ValueType, LocalIndexType, GlobalIndexType>::read_distributed(
     const matrix_data<value_type, global_index_type>& data,
-    const partition<local_index_type, global_index_type>* row_partition,
-    const partition<local_index_type, global_index_type>* col_partition)
+    const partition<local_index_type, global_index_type>& row_partition,
+    const partition<local_index_type, global_index_type>& col_partition)
 {
     this->read_distributed(
         device_matrix_data<value_type, global_index_type>::create_from_host(
@@ -209,7 +209,7 @@ void Matrix<ValueType, LocalIndexType, GlobalIndexType>::read_distributed(
 template <typename ValueType, typename LocalIndexType, typename GlobalIndexType>
 void Matrix<ValueType, LocalIndexType, GlobalIndexType>::read_distributed(
     const matrix_data<ValueType, global_index_type>& data,
-    const partition<local_index_type, global_index_type>* partition)
+    const partition<local_index_type, global_index_type>& partition)
 {
     this->read_distributed(
         device_matrix_data<value_type, global_index_type>::create_from_host(
@@ -221,7 +221,7 @@ void Matrix<ValueType, LocalIndexType, GlobalIndexType>::read_distributed(
 template <typename ValueType, typename LocalIndexType, typename GlobalIndexType>
 void Matrix<ValueType, LocalIndexType, GlobalIndexType>::read_distributed(
     const device_matrix_data<ValueType, GlobalIndexType>& data,
-    const partition<local_index_type, global_index_type>* partition)
+    const partition<local_index_type, global_index_type>& partition)
 {
     this->read_distributed(data, partition, partition);
 }

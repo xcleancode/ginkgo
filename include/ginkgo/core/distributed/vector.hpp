@@ -62,7 +62,7 @@ class partition;
  * partition. The local vectors are stored using the @see Dense format. The
  * vector should be filled using the read_distributed method, e.g.
  * ```
- * auto part = partition<...>::build_from_mapping(...);
+ * auto part = partition<...>(...);
  * auto vector = Vector<...>::create(exec, comm);
  * vector->read_distributed(matrix_data, part);
  * ```
@@ -121,7 +121,7 @@ public:
     template <typename LocalIndexType, typename GlobalIndexType>
     void read_distributed(
         const device_matrix_data<ValueType, GlobalIndexType>& data,
-        const partition<LocalIndexType, GlobalIndexType>* partition);
+        const partition<LocalIndexType, GlobalIndexType>& partition);
 
     /**
      * Reads a vector from the matrix_data structure and a global row
@@ -135,7 +135,7 @@ public:
     template <typename LocalIndexType, typename GlobalIndexType>
     void read_distributed(
         const matrix_data<ValueType, GlobalIndexType>& data,
-        const partition<LocalIndexType, GlobalIndexType>* partition);
+        const partition<LocalIndexType, GlobalIndexType>& partition);
 
     void convert_to(Vector<next_precision<ValueType>>* result) const override;
 

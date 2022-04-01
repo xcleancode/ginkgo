@@ -71,7 +71,7 @@ protected:
 
     void validate(
         const gko::dim<2> size,
-        const gko::distributed::partition<local_index_type, global_index_type>*
+        const gko::distributed::partition<local_index_type, global_index_type>&
             partition,
         I<global_index_type> input_rows, I<global_index_type> input_cols,
         I<value_type> input_vals, I<I<I<value_type>>> output_entries)
@@ -82,15 +82,15 @@ protected:
         for (auto entry : output_entries) {
             ref_outputs.emplace_back(entry);
         }
-        for (comm_index_type part = 0; part < partition->get_num_parts();
+        for (comm_index_type part = 0; part < partition.get_num_parts();
              ++part) {
             auto num_rows =
-                static_cast<gko::size_type>(partition->get_part_size(part));
+                static_cast<gko::size_type>(partition.get_part_size(part));
             auto output = mtx::create(ref, gko::dim<2>{num_rows, size[1]});
             output->fill(gko::zero<value_type>());
 
             gko::kernels::reference::distributed_vector::build_local(
-                ref, input, partition, part, output.get());
+                ref, input, &partition, part, output.get());
 
             GKO_ASSERT_MTX_NEAR(output, ref_outputs[part], 0);
         }
@@ -108,12 +108,11 @@ TYPED_TEST(Vector, BuildsLocalEmpty)
     using global_index_type = typename TestFixture::global_index_type;
     gko::Array<comm_index_type> mapping{this->ref, {1, 0, 2, 2, 0, 1, 1, 2}};
     comm_index_type num_parts = 3;
-    auto partition = gko::distributed::partition<
-        local_index_type, global_index_type>::build_from_mapping(this->ref,
-                                                                 mapping,
-                                                                 num_parts);
+    auto partition =
+        gko::distributed::partition<local_index_type, global_index_type>(
+            this->ref, mapping, num_parts);
 
-    this->validate(gko::dim<2>{0, 0}, partition.get(), {}, {}, {},
+    this->validate(gko::dim<2>{0, 0}, partition, {}, {}, {},
                    {{{}, {}}, {{}, {}, {}}, {{}, {}, {}}});
 }
 
@@ -124,13 +123,12 @@ TYPED_TEST(Vector, BuildsLocalSmall)
     using global_index_type = typename TestFixture::global_index_type;
     gko::Array<comm_index_type> mapping{this->ref, {1, 0}};
     comm_index_type num_parts = 2;
-    auto partition = gko::distributed::partition<
-        local_index_type, global_index_type>::build_from_mapping(this->ref,
-                                                                 mapping,
-                                                                 num_parts);
+    auto partition =
+        gko::distributed::partition<local_index_type, global_index_type>(
+            this->ref, mapping, num_parts);
 
-    this->validate(gko::dim<2>{2, 2}, partition.get(), {0, 0, 1, 1},
-                   {0, 1, 0, 1}, {1, 2, 3, 4}, {{{3, 4}}, {{1, 2}}});
+    this->validate(gko::dim<2>{2, 2}, partition, {0, 0, 1, 1}, {0, 1, 0, 1},
+                   {1, 2, 3, 4}, {{{3, 4}}, {{1, 2}}});
 }
 
 
@@ -140,12 +138,11 @@ TYPED_TEST(Vector, BuildsLocal)
     using global_index_type = typename TestFixture::global_index_type;
     gko::Array<comm_index_type> mapping{this->ref, {1, 2, 0, 0, 2, 1}};
     comm_index_type num_parts = 3;
-    auto partition = gko::distributed::partition<
-        local_index_type, global_index_type>::build_from_mapping(this->ref,
-                                                                 mapping,
-                                                                 num_parts);
+    auto partition =
+        gko::distributed::partition<local_index_type, global_index_type>(
+            this->ref, mapping, num_parts);
 
-    this->validate(gko::dim<2>{6, 8}, partition.get(), {0, 0, 1, 1, 2, 3, 4, 5},
+    this->validate(gko::dim<2>{6, 8}, partition, {0, 0, 1, 1, 2, 3, 4, 5},
                    {0, 1, 2, 3, 4, 5, 6, 7}, {1, 2, 3, 4, 5, 6, 7, 8},
                    {{{0, 0, 0, 0, 5, 0, 0, 0}, {0, 0, 0, 0, 0, 6, 0, 0}},
                     {{1, 2, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 8}},

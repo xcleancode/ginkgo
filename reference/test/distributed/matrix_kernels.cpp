@@ -81,9 +81,9 @@ protected:
 
     void validate(
         gko::dim<2> size,
-        const gko::distributed::partition<local_index_type, global_index_type>*
+        const gko::distributed::partition<local_index_type, global_index_type>&
             row_partition,
-        const gko::distributed::partition<local_index_type, global_index_type>*
+        const gko::distributed::partition<local_index_type, global_index_type>&
             col_partition,
         std::initializer_list<global_index_type> input_rows,
         std::initializer_list<global_index_type> input_cols,
@@ -116,7 +116,7 @@ protected:
         auto input = gko::device_matrix_data<value_type, global_index_type>{
             ref, size, input_rows, input_cols, input_vals};
         this->recv_offsets.resize_and_reset(
-            static_cast<gko::size_type>(row_partition->get_num_parts() + 1));
+            static_cast<gko::size_type>(row_partition.get_num_parts() + 1));
         for (auto entry : diag_entries) {
             ref_diags.emplace_back(ref, std::get<0>(entry), std::get<1>(entry),
                                    std::get<2>(entry), std::get<3>(entry));
@@ -133,10 +133,10 @@ protected:
             ref_recv_offsets.emplace_back(ref, entry);
         }
 
-        for (comm_index_type part = 0; part < row_partition->get_num_parts();
+        for (comm_index_type part = 0; part < row_partition.get_num_parts();
              ++part) {
             gko::kernels::reference::distributed_matrix::build_diag_offdiag(
-                ref, input, row_partition, col_partition, part, diag, offdiag,
+                ref, input, &row_partition, &col_partition, part, diag, offdiag,
                 gather_idxs, recv_offsets.get_data(), local_to_global_ghost);
 
             assert_device_matrix_data_equal(diag, ref_diags[part]);
@@ -199,11 +199,11 @@ TYPED_TEST(Matrix, BuildsDiagOffdiagEmpty)
     using vt = typename TestFixture::value_type;
     this->mapping = {this->ref, {1, 0, 2, 2, 0, 1, 1, 2}};
     comm_index_type num_parts = 3;
-    auto partition = gko::distributed::partition<lit, git>::build_from_mapping(
+    auto partition = gko::distributed::partition<lit, git>(
         this->ref, this->mapping, num_parts);
 
     this->validate(
-        gko::dim<2>{8, 8}, partition.get(), partition.get(), {}, {}, {},
+        gko::dim<2>{8, 8}, partition, partition, {}, {}, {},
         {std::make_tuple(gko::dim<2>{2, 2}, I<git>{}, I<git>{}, I<vt>{}),
          std::make_tuple(gko::dim<2>{3, 3}, I<git>{}, I<git>{}, I<vt>{}),
          std::make_tuple(gko::dim<2>{3, 3}, I<git>{}, I<git>{}, I<vt>{})},
@@ -221,12 +221,12 @@ TYPED_TEST(Matrix, BuildsDiagOffdiagSmall)
     using vt = typename TestFixture::value_type;
     this->mapping = {this->ref, {1, 0}};
     comm_index_type num_parts = 2;
-    auto partition = gko::distributed::partition<lit, git>::build_from_mapping(
+    auto partition = gko::distributed::partition<lit, git>(
         this->ref, this->mapping, num_parts);
 
     this->validate(
-        gko::dim<2>{2, 2}, partition.get(), partition.get(), {0, 0, 1, 1},
-        {0, 1, 0, 1}, {1, 2, 3, 4},
+        gko::dim<2>{2, 2}, partition, partition, {0, 0, 1, 1}, {0, 1, 0, 1},
+        {1, 2, 3, 4},
         {std::make_tuple(gko::dim<2>{1, 1}, I<git>{0}, I<git>{0}, I<vt>{4}),
          std::make_tuple(gko::dim<2>{1, 1}, I<git>{0}, I<git>{0}, I<vt>{1})},
         {std::make_tuple(gko::dim<2>{1, 1}, I<git>{0}, I<git>{0}, I<vt>{3}),
@@ -242,13 +242,12 @@ TYPED_TEST(Matrix, BuildsDiagOffdiagNoOffdiag)
     using vt = typename TestFixture::value_type;
     this->mapping = {this->ref, {1, 2, 0, 0, 2, 1}};
     comm_index_type num_parts = 3;
-    auto partition = gko::distributed::partition<lit, git>::build_from_mapping(
+    auto partition = gko::distributed::partition<lit, git>(
         this->ref, this->mapping, num_parts);
 
     this->validate(
-        gko::dim<2>{6, 6}, partition.get(), partition.get(),
-        {0, 0, 1, 1, 2, 3, 4, 5}, {0, 5, 1, 4, 3, 2, 4, 0},
-        {1, 2, 3, 4, 5, 6, 7, 8},
+        gko::dim<2>{6, 6}, partition, partition, {0, 0, 1, 1, 2, 3, 4, 5},
+        {0, 5, 1, 4, 3, 2, 4, 0}, {1, 2, 3, 4, 5, 6, 7, 8},
         {std::make_tuple(gko::dim<2>{2, 2}, I<git>{0, 1}, I<git>{1, 0},
                          I<vt>{5, 6}),
          std::make_tuple(gko::dim<2>{2, 2}, I<git>{0, 0, 1}, I<git>{0, 1, 0},
@@ -269,11 +268,11 @@ TYPED_TEST(Matrix, BuildsDiagOffdiagNoDiag)
     using vt = typename TestFixture::value_type;
     this->mapping = {this->ref, {1, 2, 0, 0, 2, 1}};
     comm_index_type num_parts = 3;
-    auto partition = gko::distributed::partition<lit, git>::build_from_mapping(
+    auto partition = gko::distributed::partition<lit, git>(
         this->ref, this->mapping, num_parts);
 
     this->validate(
-        gko::dim<2>{6, 6}, partition.get(), partition.get(), {0, 0, 1, 3, 4, 5},
+        gko::dim<2>{6, 6}, partition, partition, {0, 0, 1, 3, 4, 5},
         {1, 3, 5, 1, 3, 2}, {1, 2, 5, 6, 7, 8},
         {std::make_tuple(gko::dim<2>{2, 2}, I<git>{}, I<git>{}, I<vt>{}),
          std::make_tuple(gko::dim<2>{2, 2}, I<git>{}, I<git>{}, I<vt>{}),
@@ -294,11 +293,11 @@ TYPED_TEST(Matrix, BuildsDiagOffdiagMixed)
     using vt = typename TestFixture::value_type;
     this->mapping = {this->ref, {1, 2, 0, 0, 2, 1}};
     comm_index_type num_parts = 3;
-    auto partition = gko::distributed::partition<lit, git>::build_from_mapping(
+    auto partition = gko::distributed::partition<lit, git>(
         this->ref, this->mapping, num_parts);
 
     this->validate(
-        gko::dim<2>{6, 6}, partition.get(), partition.get(),
+        gko::dim<2>{6, 6}, partition, partition,
         {0, 0, 0, 0, 1, 1, 1, 2, 3, 3, 4, 4, 5, 5},
         {0, 1, 3, 5, 1, 4, 5, 3, 1, 2, 3, 4, 0, 2},
         {11, 1, 2, 12, 13, 14, 5, 15, 6, 16, 7, 17, 18, 8},
@@ -325,16 +324,15 @@ TYPED_TEST(Matrix, BuildsDiagOffdiagEmptyWithColPartition)
     using vt = typename TestFixture::value_type;
     this->mapping = {this->ref, {1, 0, 2, 2, 0, 1, 1, 2}};
     comm_index_type num_parts = 3;
-    auto partition = gko::distributed::partition<lit, git>::build_from_mapping(
+    auto partition = gko::distributed::partition<lit, git>(
         this->ref, this->mapping, num_parts);
     gko::Array<comm_index_type> col_mapping{this->ref,
                                             {0, 0, 2, 2, 2, 1, 1, 1}};
-    auto col_partition =
-        gko::distributed::partition<lit, git>::build_from_mapping(
-            this->ref, col_mapping, num_parts);
+    auto col_partition = gko::distributed::partition<lit, git>(
+        this->ref, col_mapping, num_parts);
 
     this->validate(
-        gko::dim<2>{8, 8}, partition.get(), col_partition.get(), {}, {}, {},
+        gko::dim<2>{8, 8}, partition, col_partition, {}, {}, {},
         {std::make_tuple(gko::dim<2>{2, 2}, I<git>{}, I<git>{}, I<vt>{}),
          std::make_tuple(gko::dim<2>{3, 3}, I<git>{}, I<git>{}, I<vt>{}),
          std::make_tuple(gko::dim<2>{3, 3}, I<git>{}, I<git>{}, I<vt>{})},
@@ -352,16 +350,15 @@ TYPED_TEST(Matrix, BuildsDiagOffdiagSmallWithColPartition)
     using vt = typename TestFixture::value_type;
     this->mapping = {this->ref, {1, 0}};
     comm_index_type num_parts = 2;
-    auto partition = gko::distributed::partition<lit, git>::build_from_mapping(
+    auto partition = gko::distributed::partition<lit, git>(
         this->ref, this->mapping, num_parts);
     gko::Array<comm_index_type> col_mapping{this->ref, {0, 1}};
-    auto col_partition =
-        gko::distributed::partition<lit, git>::build_from_mapping(
-            this->ref, col_mapping, num_parts);
+    auto col_partition = gko::distributed::partition<lit, git>(
+        this->ref, col_mapping, num_parts);
 
     this->validate(
-        gko::dim<2>{2, 2}, partition.get(), col_partition.get(), {0, 0, 1, 1},
-        {0, 1, 0, 1}, {1, 2, 3, 4},
+        gko::dim<2>{2, 2}, partition, col_partition, {0, 0, 1, 1}, {0, 1, 0, 1},
+        {1, 2, 3, 4},
         {std::make_tuple(gko::dim<2>{1, 1}, I<git>{0}, I<git>{0}, I<vt>{3}),
          std::make_tuple(gko::dim<2>{1, 1}, I<git>{0}, I<git>{0}, I<vt>{2})},
         {std::make_tuple(gko::dim<2>{1, 1}, I<git>{0}, I<git>{0}, I<vt>{4}),
@@ -376,16 +373,15 @@ TYPED_TEST(Matrix, BuildsDiagOffdiagNoOffdiagWithColPartition)
     using vt = typename TestFixture::value_type;
     this->mapping = {this->ref, {1, 2, 0, 0, 2, 1}};
     comm_index_type num_parts = 3;
-    auto partition = gko::distributed::partition<lit, git>::build_from_mapping(
+    auto partition = gko::distributed::partition<lit, git>(
         this->ref, this->mapping, num_parts);
     gko::Array<comm_index_type> col_mapping{this->ref, {0, 0, 2, 2, 1, 1}};
-    auto col_partition =
-        gko::distributed::partition<lit, git>::build_from_mapping(
-            this->ref, col_mapping, num_parts);
+    auto col_partition = gko::distributed::partition<lit, git>(
+        this->ref, col_mapping, num_parts);
 
     this->validate(
-        gko::dim<2>{6, 6}, partition.get(), col_partition.get(),
-        {3, 0, 5, 1, 1, 4}, {1, 4, 5, 2, 3, 3}, {1, 2, 3, 4, 5, 6},
+        gko::dim<2>{6, 6}, partition, col_partition, {3, 0, 5, 1, 1, 4},
+        {1, 4, 5, 2, 3, 3}, {1, 2, 3, 4, 5, 6},
         {std::make_tuple(gko::dim<2>{2, 2}, I<git>{1}, I<git>{1}, I<vt>{1}),
          std::make_tuple(gko::dim<2>{2, 2}, I<git>{0, 1}, I<git>{0, 1},
                          I<vt>{2, 3}),
@@ -405,16 +401,15 @@ TYPED_TEST(Matrix, BuildsDiagOffdiagNoDiagWithColPartition)
     using vt = typename TestFixture::value_type;
     this->mapping = {this->ref, {1, 2, 0, 0, 2, 1}};
     comm_index_type num_parts = 3;
-    auto partition = gko::distributed::partition<lit, git>::build_from_mapping(
+    auto partition = gko::distributed::partition<lit, git>(
         this->ref, this->mapping, num_parts);
     gko::Array<comm_index_type> col_mapping{this->ref, {0, 0, 2, 2, 1, 1}};
-    auto col_partition =
-        gko::distributed::partition<lit, git>::build_from_mapping(
-            this->ref, col_mapping, num_parts);
+    auto col_partition = gko::distributed::partition<lit, git>(
+        this->ref, col_mapping, num_parts);
 
     this->validate(
-        gko::dim<2>{6, 6}, partition.get(), col_partition.get(),
-        {2, 3, 2, 0, 5, 1, 1}, {2, 3, 5, 0, 1, 1, 4}, {1, 2, 3, 4, 5, 6, 7},
+        gko::dim<2>{6, 6}, partition, col_partition, {2, 3, 2, 0, 5, 1, 1},
+        {2, 3, 5, 0, 1, 1, 4}, {1, 2, 3, 4, 5, 6, 7},
         {std::make_tuple(gko::dim<2>{2, 2}, I<git>{}, I<git>{}, I<vt>{}),
          std::make_tuple(gko::dim<2>{2, 2}, I<git>{}, I<git>{}, I<vt>{}),
          std::make_tuple(gko::dim<2>{2, 2}, I<git>{}, I<git>{}, I<vt>{})},
@@ -436,14 +431,13 @@ TYPED_TEST(Matrix, BuildsDiagOffdiagMixedWithColPartition)
     using vt = typename TestFixture::value_type;
     this->mapping = {this->ref, {1, 2, 0, 0, 2, 1}};
     comm_index_type num_parts = 3;
-    auto partition = gko::distributed::partition<lit, git>::build_from_mapping(
+    auto partition = gko::distributed::partition<lit, git>(
         this->ref, this->mapping, num_parts);
     gko::Array<comm_index_type> col_mapping{this->ref, {0, 0, 2, 2, 1, 1}};
-    auto col_partition =
-        gko::distributed::partition<lit, git>::build_from_mapping(
-            this->ref, col_mapping, num_parts);
+    auto col_partition = gko::distributed::partition<lit, git>(
+        this->ref, col_mapping, num_parts);
 
-    this->validate(gko::dim<2>{6, 6}, partition.get(), col_partition.get(),
+    this->validate(gko::dim<2>{6, 6}, partition, col_partition,
                    {2, 3, 3, 0, 5, 1, 4, 2, 3, 2, 0, 0, 1, 1, 4, 4},
                    {0, 0, 1, 5, 4, 2, 2, 3, 2, 4, 1, 2, 4, 5, 0, 5},
                    {11, 12, 13, 14, 15, 16, 17, 1, 2, 3, 4, 5, 6, 7, 8, 9},
@@ -471,15 +465,14 @@ TYPED_TEST(Matrix, BuildsDiagOffdiagNonSquare)
     using vt = typename TestFixture::value_type;
     gko::Array<comm_index_type> row_mapping{this->ref, {1, 2, 0, 0, 2, 1}};
     comm_index_type num_parts = 3;
-    auto partition = gko::distributed::partition<lit, git>::build_from_mapping(
+    auto partition = gko::distributed::partition<lit, git>(
         this->ref, row_mapping, num_parts);
     gko::Array<comm_index_type> col_mapping{this->ref, {0, 2, 2, 1}};
-    auto col_partition =
-        gko::distributed::partition<lit, git>::build_from_mapping(
-            this->ref, col_mapping, num_parts);
+    auto col_partition = gko::distributed::partition<lit, git>(
+        this->ref, col_mapping, num_parts);
 
     this->validate(
-        gko::dim<2>{6, 4}, partition.get(), col_partition.get(),
+        gko::dim<2>{6, 4}, partition, col_partition,
         {2, 3, 0, 1, 4, 3, 3, 0, 1, 4}, {0, 0, 3, 2, 1, 2, 3, 0, 3, 3},
         {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
         {std::make_tuple(gko::dim<2>{2, 1}, I<git>{0, 1}, I<git>{0, 0},
@@ -503,20 +496,18 @@ TYPED_TEST(Matrix, BuildGhostMapContinuous)
     using global_index_type = typename TestFixture::global_index_type;
     this->mapping = {this->ref, {0, 0, 0, 1, 1, 2, 2}};
     constexpr comm_index_type num_parts = 3;
-    auto partition = gko::distributed::partition<
-        local_index_type, global_index_type>::build_from_mapping(this->ref,
-                                                                 this->mapping,
-                                                                 num_parts);
+    auto partition =
+        gko::distributed::partition<local_index_type, global_index_type>(
+            this->ref, this->mapping, num_parts);
     this->recv_offsets.resize_and_reset(num_parts + 1);
     gko::Array<global_index_type> result[num_parts] = {
         {this->ref, {3}}, {this->ref, {0, 6}}, {this->ref, {4}}};
 
     for (int local_id = 0; local_id < num_parts; ++local_id) {
         gko::kernels::reference::distributed_matrix::build_diag_offdiag(
-            this->ref, this->create_input_full_rank(), partition.get(),
-            partition.get(), local_id, this->diag, this->offdiag,
-            this->gather_idxs, this->recv_offsets.get_data(),
-            this->local_to_global_ghost);
+            this->ref, this->create_input_full_rank(), &partition, &partition,
+            local_id, this->diag, this->offdiag, this->gather_idxs,
+            this->recv_offsets.get_data(), this->local_to_global_ghost);
 
         GKO_ASSERT_ARRAY_EQ(result[local_id], this->local_to_global_ghost);
     }
@@ -529,10 +520,9 @@ TYPED_TEST(Matrix, BuildGhostMapScattered)
     using global_index_type = typename TestFixture::global_index_type;
     this->mapping = {this->ref, {0, 1, 2, 0, 1, 2, 0}};
     constexpr comm_index_type num_parts = 3;
-    auto partition = gko::distributed::partition<
-        local_index_type, global_index_type>::build_from_mapping(this->ref,
-                                                                 this->mapping,
-                                                                 num_parts);
+    auto partition =
+        gko::distributed::partition<local_index_type, global_index_type>(
+            this->ref, this->mapping, num_parts);
     this->recv_offsets.resize_and_reset(num_parts + 1);
     gko::Array<global_index_type> result[num_parts] = {
         {this->ref, {5}},
@@ -541,10 +531,9 @@ TYPED_TEST(Matrix, BuildGhostMapScattered)
 
     for (int local_id = 0; local_id < num_parts; ++local_id) {
         gko::kernels::reference::distributed_matrix::build_diag_offdiag(
-            this->ref, this->create_input_full_rank(), partition.get(),
-            partition.get(), local_id, this->diag, this->offdiag,
-            this->gather_idxs, this->recv_offsets.get_data(),
-            this->local_to_global_ghost);
+            this->ref, this->create_input_full_rank(), &partition, &partition,
+            local_id, this->diag, this->offdiag, this->gather_idxs,
+            this->recv_offsets.get_data(), this->local_to_global_ghost);
 
         GKO_ASSERT_ARRAY_EQ(result[local_id], this->local_to_global_ghost);
     }
