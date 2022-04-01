@@ -103,22 +103,22 @@ namespace distributed {
  * @ingroup distributed
  */
 template <typename LocalIndexType = int32, typename GlobalIndexType = int64>
-class Partition
+class partition
     : public EnablePolymorphicObject<
-          Partition<LocalIndexType, GlobalIndexType>>,
+          partition<LocalIndexType, GlobalIndexType>>,
       public EnablePolymorphicAssignment<
-          Partition<LocalIndexType, GlobalIndexType>>,
-      public EnableCreateMethod<Partition<LocalIndexType, GlobalIndexType>> {
-    friend class EnableCreateMethod<Partition>;
-    friend class EnablePolymorphicObject<Partition>;
+          partition<LocalIndexType, GlobalIndexType>>,
+      public EnableCreateMethod<partition<LocalIndexType, GlobalIndexType>> {
+    friend class EnableCreateMethod<partition>;
+    friend class EnablePolymorphicObject<partition>;
     static_assert(sizeof(GlobalIndexType) >= sizeof(LocalIndexType),
                   "GlobalIndexType must be at least as large as "
                   "LocalIndexType");
 
 public:
-    using EnableCreateMethod<Partition>::create;
-    using EnablePolymorphicAssignment<Partition>::convert_to;
-    using EnablePolymorphicAssignment<Partition>::move_to;
+    using EnableCreateMethod<partition>::create;
+    using EnablePolymorphicAssignment<partition>::convert_to;
+    using EnablePolymorphicAssignment<partition>::move_to;
 
     using local_index_type = LocalIndexType;
     using global_index_type = GlobalIndexType;
@@ -248,9 +248,9 @@ public:
      * @param mapping  the mapping from global indices to part IDs.
      * @param num_parts  the number of parts used in the mapping.
      *
-     * @return  a Partition representing the given mapping as a set of ranges
+     * @return  a partition representing the given mapping as a set of ranges
      */
-    static std::unique_ptr<Partition> build_from_mapping(
+    static std::unique_ptr<partition> build_from_mapping(
         std::shared_ptr<const Executor> exec,
         const Array<comm_index_type>& mapping, comm_index_type num_parts);
 
@@ -263,9 +263,9 @@ public:
      *                Has to contain at least one element.
      *                The first element has to be 0.
      *
-     * @return  a Partition representing the given contiguous partitioning.
+     * @return  a partition representing the given contiguous partitioning.
      */
-    static std::unique_ptr<Partition> build_from_contiguous(
+    static std::unique_ptr<partition> build_from_contiguous(
         std::shared_ptr<const Executor> exec,
         const Array<global_index_type>& ranges);
 
@@ -276,11 +276,11 @@ public:
      * @param num_parts  the number of parst used in this partition
      * @param global_size  the global size of this partition
      *
-     * @return  a Partition where each range has either
+     * @return  a partition where each range has either
      * `floor(global_size/num_parts)` or `floor(global_size/num_parts) + 1`
      * indices.
      */
-    static std::unique_ptr<Partition> build_from_global_size_uniform(
+    static std::unique_ptr<partition> build_from_global_size_uniform(
         std::shared_ptr<const Executor> exec, comm_index_type num_parts,
         global_index_type global_size);
 
@@ -289,9 +289,9 @@ private:
      * Creates a partition stored on the given executor with the given number of
      * consecutive ranges and parts.
      */
-    Partition(std::shared_ptr<const Executor> exec,
+    partition(std::shared_ptr<const Executor> exec,
               comm_index_type num_parts = 0, size_type num_ranges = 0)
-        : EnablePolymorphicObject<Partition>{exec},
+        : EnablePolymorphicObject<partition>{exec},
           num_parts_{num_parts},
           num_empty_parts_{0},
           size_{0},

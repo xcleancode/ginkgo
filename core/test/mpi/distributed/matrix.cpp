@@ -190,7 +190,7 @@ protected:
         auto move_result = dist_mtx_type::create(ref, comm, inner_matrix_type,
                                                  outer_matrix_type);
         gko::matrix_data<value_type, global_index_type> md{mat->get_size()};
-        auto part = gko::distributed::Partition<local_index_type,
+        auto part = gko::distributed::partition<local_index_type,
                                                 global_index_type>::create(ref);
 
         ASSERT_NO_THROW(mat->apply(a.get(), b.get()));
@@ -297,7 +297,7 @@ protected:
     using dist_vec_type = gko::distributed::Vector<value_type>;
     using dense_vec_type = gko::matrix::Dense<value_type>;
     using Partition =
-        gko::distributed::Partition<local_index_type, global_index_type>;
+        gko::distributed::partition<local_index_type, global_index_type>;
     using matrix_data = gko::matrix_data<value_type, global_index_type>;
 
 
@@ -390,10 +390,10 @@ protected:
             num_rows, std::uniform_int_distribution<int>(0, num_parts - 1),
             this->engine, this->ref);
         row_part_large = gko::share(
-            gko::distributed::Partition<local_index_type, global_index_type>::
+            gko::distributed::partition<local_index_type, global_index_type>::
                 build_from_mapping(this->ref, row_mapping, num_parts));
         col_part_large = gko::share(
-            gko::distributed::Partition<local_index_type, global_index_type>::
+            gko::distributed::partition<local_index_type, global_index_type>::
                 build_from_mapping(this->ref, col_mapping, num_parts));
 
         dist_mat->read_distributed(mat_md, row_part_large.get(),

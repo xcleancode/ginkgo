@@ -138,7 +138,7 @@ namespace distributed {
 
 
 template <typename LocalIndexType, typename GlobalIndexType>
-class Partition;
+class partition;
 
 
 template <typename ValueType>
@@ -150,7 +150,7 @@ class Vector;
  *
  * The matrix is stored in a row-wise distributed format.
  * Each process owns a specific set of rows, where the assignment of rows is
- * defined by a row Partition. The following depicts the distribution of
+ * defined by a row partition. The following depicts the distribution of
  * global rows according to their assigned part-id (which will usually be the
  * owning process id):
  * ```
@@ -200,14 +200,14 @@ class Vector;
  *
  * The Matrix should be filled using the read_distributed method, e.g.
  * ```
- * auto part = Partition<...>::build_from_mapping(...);
+ * auto part = partition<...>::build_from_mapping(...);
  * auto mat = Matrix<...>::create(exec, comm);
  * mat->read_distributed(matrix_data, part);
  * ```
  * or if different partitions for the rows and columns are used:
  * ```
- * auto row_part = Partition<...>::build_from_mapping(...);
- * auto col_part = Partition<...>::build_from_mapping(...);
+ * auto row_part = partition<...>::build_from_mapping(...);
+ * auto col_part = partition<...>::build_from_mapping(...);
  * auto mat = Matrix<...>::create(exec, comm);
  * mat->read_distributed(matrix_data, row_part, col_part);
  * ```
@@ -277,7 +277,7 @@ public:
      */
     void read_distributed(
         const device_matrix_data<value_type, global_index_type>& data,
-        const Partition<local_index_type, global_index_type>* partition);
+        const partition<local_index_type, global_index_type>* partition);
 
     /**
      * Reads a square matrix from the matrix_data structure and a global
@@ -290,7 +290,7 @@ public:
      */
     void read_distributed(
         const matrix_data<value_type, global_index_type>& data,
-        const Partition<local_index_type, global_index_type>* partition);
+        const partition<local_index_type, global_index_type>* partition);
 
     /**
      * Reads a matrix from the device_matrix_data structure, a global row
@@ -309,8 +309,8 @@ public:
      */
     void read_distributed(
         const device_matrix_data<value_type, global_index_type>& data,
-        const Partition<local_index_type, global_index_type>* row_partition,
-        const Partition<local_index_type, global_index_type>* col_partition);
+        const partition<local_index_type, global_index_type>* row_partition,
+        const partition<local_index_type, global_index_type>* col_partition);
 
     /**
      * Reads a matrix from the matrix_data structure, a global row partition,
@@ -323,8 +323,8 @@ public:
      */
     void read_distributed(
         const matrix_data<value_type, global_index_type>& data,
-        const Partition<local_index_type, global_index_type>* row_partition,
-        const Partition<local_index_type, global_index_type>* col_partition);
+        const partition<local_index_type, global_index_type>* row_partition,
+        const partition<local_index_type, global_index_type>* col_partition);
 
     /**
      * Get read access to the local diagonal matrix

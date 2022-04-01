@@ -58,8 +58,8 @@ GKO_REGISTER_OPERATION(has_ordered_parts,
 
 
 template <typename LocalIndexType, typename GlobalIndexType>
-std::unique_ptr<Partition<LocalIndexType, GlobalIndexType>>
-Partition<LocalIndexType, GlobalIndexType>::build_from_mapping(
+std::unique_ptr<partition<LocalIndexType, GlobalIndexType>>
+partition<LocalIndexType, GlobalIndexType>::build_from_mapping(
     std::shared_ptr<const Executor> exec, const Array<comm_index_type>& mapping,
     comm_index_type num_parts)
 {
@@ -67,7 +67,7 @@ Partition<LocalIndexType, GlobalIndexType>::build_from_mapping(
     size_type num_ranges{};
     exec->run(distributed_partition::make_count_ranges(*local_mapping.get(),
                                                        num_ranges));
-    auto result = Partition::create(exec, num_parts, num_ranges);
+    auto result = partition::create(exec, num_parts, num_ranges);
     exec->run(distributed_partition::make_build_from_mapping(
         *local_mapping.get(), result->offsets_.get_data(),
         result->part_ids_.get_data()));
@@ -77,12 +77,12 @@ Partition<LocalIndexType, GlobalIndexType>::build_from_mapping(
 
 
 template <typename LocalIndexType, typename GlobalIndexType>
-std::unique_ptr<Partition<LocalIndexType, GlobalIndexType>>
-Partition<LocalIndexType, GlobalIndexType>::build_from_contiguous(
+std::unique_ptr<partition<LocalIndexType, GlobalIndexType>>
+partition<LocalIndexType, GlobalIndexType>::build_from_contiguous(
     std::shared_ptr<const Executor> exec, const Array<GlobalIndexType>& ranges)
 {
     auto local_ranges = make_temporary_clone(exec, &ranges);
-    auto result = Partition::create(
+    auto result = partition::create(
         exec, static_cast<comm_index_type>(ranges.get_num_elems() - 1),
         ranges.get_num_elems() - 1);
     exec->run(distributed_partition::make_build_from_contiguous(
@@ -94,20 +94,20 @@ Partition<LocalIndexType, GlobalIndexType>::build_from_contiguous(
 
 
 template <typename LocalIndexType, typename GlobalIndexType>
-std::unique_ptr<Partition<LocalIndexType, GlobalIndexType>>
-Partition<LocalIndexType, GlobalIndexType>::build_from_global_size_uniform(
+std::unique_ptr<partition<LocalIndexType, GlobalIndexType>>
+partition<LocalIndexType, GlobalIndexType>::build_from_global_size_uniform(
     std::shared_ptr<const Executor> exec, comm_index_type num_parts,
     GlobalIndexType global_size)
 {
     Array<GlobalIndexType> ranges(exec, num_parts + 1);
     exec->run(distributed_partition::make_build_ranges_from_global_size(
         num_parts, global_size, ranges));
-    return Partition::build_from_contiguous(exec, ranges);
+    return partition::build_from_contiguous(exec, ranges);
 }
 
 
 template <typename LocalIndexType, typename GlobalIndexType>
-void Partition<LocalIndexType, GlobalIndexType>::finalize_construction()
+void partition<LocalIndexType, GlobalIndexType>::finalize_construction()
 {
     auto exec = offsets_.get_executor();
     exec->run(distributed_partition::make_build_starting_indices(
@@ -120,7 +120,7 @@ void Partition<LocalIndexType, GlobalIndexType>::finalize_construction()
 
 
 template <typename LocalIndexType, typename GlobalIndexType>
-bool Partition<LocalIndexType, GlobalIndexType>::has_connected_parts()
+bool partition<LocalIndexType, GlobalIndexType>::has_connected_parts()
 {
     return this->get_num_parts() - this->get_num_empty_parts() ==
            this->get_num_ranges();
@@ -128,7 +128,7 @@ bool Partition<LocalIndexType, GlobalIndexType>::has_connected_parts()
 
 
 template <typename LocalIndexType, typename GlobalIndexType>
-bool Partition<LocalIndexType, GlobalIndexType>::has_ordered_parts()
+bool partition<LocalIndexType, GlobalIndexType>::has_ordered_parts()
 {
     if (this->has_connected_parts()) {
         auto exec = this->get_executor();
@@ -142,7 +142,7 @@ bool Partition<LocalIndexType, GlobalIndexType>::has_ordered_parts()
 }
 
 
-#define GKO_DECLARE_PARTITION(_local, _global) class Partition<_local, _global>
+#define GKO_DECLARE_PARTITION(_local, _global) class partition<_local, _global>
 GKO_INSTANTIATE_FOR_EACH_LOCAL_GLOBAL_INDEX_TYPE(GKO_DECLARE_PARTITION);
 
 

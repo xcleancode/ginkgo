@@ -51,7 +51,7 @@ namespace distributed {
 
 
 template <typename LocalIndexType, typename GlobalIndexType>
-class Partition;
+class partition;
 
 
 /**
@@ -59,10 +59,10 @@ class Partition;
  * vectors in a dense storage format.
  *
  * The (multi-)vector is distributed by row, which is described by a @see
- * Partition. The local vectors are stored using the @see Dense format. The
+ * partition. The local vectors are stored using the @see Dense format. The
  * vector should be filled using the read_distributed method, e.g.
  * ```
- * auto part = Partition<...>::build_from_mapping(...);
+ * auto part = partition<...>::build_from_mapping(...);
  * auto vector = Vector<...>::create(exec, comm);
  * vector->read_distributed(matrix_data, part);
  * ```
@@ -121,7 +121,7 @@ public:
     template <typename LocalIndexType, typename GlobalIndexType>
     void read_distributed(
         const device_matrix_data<ValueType, GlobalIndexType>& data,
-        const Partition<LocalIndexType, GlobalIndexType>* partition);
+        const partition<LocalIndexType, GlobalIndexType>* partition);
 
     /**
      * Reads a vector from the matrix_data structure and a global row
@@ -135,7 +135,7 @@ public:
     template <typename LocalIndexType, typename GlobalIndexType>
     void read_distributed(
         const matrix_data<ValueType, GlobalIndexType>& data,
-        const Partition<LocalIndexType, GlobalIndexType>* partition);
+        const partition<LocalIndexType, GlobalIndexType>* partition);
 
     void convert_to(Vector<next_precision<ValueType>>* result) const override;
 
@@ -349,7 +349,7 @@ protected:
      * @param exec  Executor associated with vector
      * @param comm  Communicator associated with vector, the default is
      *              MPI_COMM_WORLD
-     * @param partition  Partition of global rows
+     * @param partition  partition of global rows
      * @param global_size  Global size of the vector
      * @param local_size  Processor-local size of the vector
      * @param stride  Stride of the local vector.
@@ -363,7 +363,7 @@ protected:
      * @param exec  Executor associated with vector
      * @param comm  Communicator associated with vector, the default is
      *              MPI_COMM_WORLD
-     * @param partition  Partition of global rows
+     * @param partition  partition of global rows
      * @param global_size  Global size of the vector
      * @param local_size  Processor-local size of the vector, uses local_size[1]
      *                    as the stride

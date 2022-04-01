@@ -54,7 +54,7 @@ namespace kernels {
     void build_local(                                                         \
         std::shared_ptr<const DefaultExecutor> exec,                          \
         const device_matrix_data<ValueType, GlobalIndexType>& input,          \
-        const distributed::Partition<LocalIndexType, GlobalIndexType>*        \
+        const distributed::partition<LocalIndexType, GlobalIndexType>*        \
             partition,                                                        \
         comm_index_type local_part, matrix::Dense<ValueType>* local_mtx)
 

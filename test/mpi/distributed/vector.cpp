@@ -37,6 +37,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #include <ginkgo/config.hpp>
+#include <ginkgo/core/distributed/partition.hpp>
 #include <ginkgo/core/distributed/vector.hpp>
 #include <ginkgo/core/log/logger.hpp>
 
@@ -96,7 +97,7 @@ public:
     using global_index_type = typename std::tuple_element<
         2, decltype(ValueLocalGlobalIndexType())>::type;
     using part_type =
-        gko::distributed::Partition<local_index_type, global_index_type>;
+        gko::distributed::partition<local_index_type, global_index_type>;
     using md_type = gko::matrix_data<value_type, global_index_type>;
     using d_md_type = gko::device_matrix_data<value_type, global_index_type>;
     using dist_vec_type = gko::distributed::Vector<value_type>;
@@ -358,7 +359,7 @@ public:
     using local_index_type = gko::int32;
     using global_index_type = gko::int64;
     using part_type =
-        gko::distributed::Partition<local_index_type, global_index_type>;
+        gko::distributed::partition<local_index_type, global_index_type>;
     using dist_vec_type = gko::distributed::Vector<value_type>;
     using dense_type = gko::matrix::Dense<value_type>;
     using real_dense_type = typename dense_type::real_type;

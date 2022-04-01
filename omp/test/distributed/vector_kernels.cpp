@@ -75,9 +75,9 @@ protected:
     {}
 
     void validate(
-        const gko::distributed::Partition<local_index_type, global_index_type>*
+        const gko::distributed::partition<local_index_type, global_index_type>*
             partition,
-        const gko::distributed::Partition<local_index_type, global_index_type>*
+        const gko::distributed::partition<local_index_type, global_index_type>*
             d_partition,
         gko::device_matrix_data<value_type, global_index_type> input)
     {
@@ -137,11 +137,11 @@ TYPED_TEST(Vector, BuildsLocalEmptyIsEquivalentToRef)
             std::uniform_int_distribution<gko::distributed::comm_index_type>(
                 0, num_parts - 1),
             this->engine, this->ref);
-    auto partition = gko::distributed::Partition<
+    auto partition = gko::distributed::partition<
         local_index_type, global_index_type>::build_from_mapping(this->ref,
                                                                  mapping,
                                                                  num_parts);
-    auto d_partition = gko::distributed::Partition<
+    auto d_partition = gko::distributed::partition<
         local_index_type, global_index_type>::build_from_mapping(this->exec,
                                                                  mapping,
                                                                  num_parts);
@@ -174,11 +174,11 @@ TYPED_TEST(Vector, BuildsLocalSmallIsEquivalentToRef)
             std::uniform_real_distribution<gko::remove_complex<value_type>>(0,
                                                                             1),
             this->engine, this->ref);
-    auto partition = gko::distributed::Partition<
+    auto partition = gko::distributed::partition<
         local_index_type, global_index_type>::build_from_mapping(this->ref,
                                                                  mapping,
                                                                  num_parts);
-    auto d_partition = gko::distributed::Partition<
+    auto d_partition = gko::distributed::partition<
         local_index_type, global_index_type>::build_from_mapping(this->exec,
                                                                  mapping,
                                                                  num_parts);
@@ -209,11 +209,11 @@ TYPED_TEST(Vector, BuildsLocalIsEquivalentToRef)
             std::uniform_real_distribution<gko::remove_complex<value_type>>(0,
                                                                             1),
             this->engine, this->ref);
-    auto partition = gko::distributed::Partition<
+    auto partition = gko::distributed::partition<
         local_index_type, global_index_type>::build_from_mapping(this->ref,
                                                                  mapping,
                                                                  num_parts);
-    auto d_partition = gko::distributed::Partition<
+    auto d_partition = gko::distributed::partition<
         local_index_type, global_index_type>::build_from_mapping(this->exec,
                                                                  mapping,
                                                                  num_parts);

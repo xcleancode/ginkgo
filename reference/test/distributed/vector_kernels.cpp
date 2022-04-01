@@ -71,7 +71,7 @@ protected:
 
     void validate(
         const gko::dim<2> size,
-        const gko::distributed::Partition<local_index_type, global_index_type>*
+        const gko::distributed::partition<local_index_type, global_index_type>*
             partition,
         I<global_index_type> input_rows, I<global_index_type> input_cols,
         I<value_type> input_vals, I<I<I<value_type>>> output_entries)
@@ -108,7 +108,7 @@ TYPED_TEST(Vector, BuildsLocalEmpty)
     using global_index_type = typename TestFixture::global_index_type;
     gko::Array<comm_index_type> mapping{this->ref, {1, 0, 2, 2, 0, 1, 1, 2}};
     comm_index_type num_parts = 3;
-    auto partition = gko::distributed::Partition<
+    auto partition = gko::distributed::partition<
         local_index_type, global_index_type>::build_from_mapping(this->ref,
                                                                  mapping,
                                                                  num_parts);
@@ -124,7 +124,7 @@ TYPED_TEST(Vector, BuildsLocalSmall)
     using global_index_type = typename TestFixture::global_index_type;
     gko::Array<comm_index_type> mapping{this->ref, {1, 0}};
     comm_index_type num_parts = 2;
-    auto partition = gko::distributed::Partition<
+    auto partition = gko::distributed::partition<
         local_index_type, global_index_type>::build_from_mapping(this->ref,
                                                                  mapping,
                                                                  num_parts);
@@ -140,7 +140,7 @@ TYPED_TEST(Vector, BuildsLocal)
     using global_index_type = typename TestFixture::global_index_type;
     gko::Array<comm_index_type> mapping{this->ref, {1, 2, 0, 0, 2, 1}};
     comm_index_type num_parts = 3;
-    auto partition = gko::distributed::Partition<
+    auto partition = gko::distributed::partition<
         local_index_type, global_index_type>::build_from_mapping(this->ref,
                                                                  mapping,
                                                                  num_parts);

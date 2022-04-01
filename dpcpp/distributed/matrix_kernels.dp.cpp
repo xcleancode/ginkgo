@@ -46,9 +46,9 @@ template <typename ValueType, typename LocalIndexType, typename GlobalIndexType>
 void build_diag_offdiag(
     std::shared_ptr<const DefaultExecutor> exec,
     const device_matrix_data<ValueType, GlobalIndexType>& input,
-    const distributed::Partition<LocalIndexType, GlobalIndexType>*
+    const distributed::partition<LocalIndexType, GlobalIndexType>*
         row_partition,
-    const distributed::Partition<LocalIndexType, GlobalIndexType>*
+    const distributed::partition<LocalIndexType, GlobalIndexType>*
         col_partition,
     comm_index_type local_part,
     device_matrix_data<ValueType, LocalIndexType>& diag_data,

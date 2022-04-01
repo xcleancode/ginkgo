@@ -64,7 +64,7 @@ protected:
     using global_index_type =
         typename std::tuple_element<1, decltype(LocalGlobalIndexType())>::type;
     using part_type =
-        gko::distributed::Partition<local_index_type, global_index_type>;
+        gko::distributed::partition<local_index_type, global_index_type>;
 
     Partition() : rand_engine(96457) {}
 

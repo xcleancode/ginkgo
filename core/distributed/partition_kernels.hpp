@@ -79,7 +79,7 @@ namespace kernels {
 #define GKO_DECLARE_PARTITION_IS_ORDERED(LocalIndexType, GlobalIndexType) \
     void has_ordered_parts(                                               \
         std::shared_ptr<const DefaultExecutor> exec,                      \
-        const distributed::Partition<LocalIndexType, GlobalIndexType>*    \
+        const distributed::partition<LocalIndexType, GlobalIndexType>*    \
             partition,                                                    \
         bool* result)
 
