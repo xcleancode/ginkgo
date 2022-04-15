@@ -94,4 +94,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // clang-format on
 
 
+/* Is Metis available */
+// clang-format off
+#define GKO_HAVE_METIS @GINKGO_HAVE_METIS@
+// clang-format on
+
+
 #endif  // GKO_INCLUDE_CONFIG_H

@@ -27,6 +27,7 @@ target_sources(ginkgo_omp
     multigrid/amgx_pgm_kernels.cpp
     preconditioner/isai_kernels.cpp
     preconditioner/jacobi_kernels.cpp
+    reorder/metis_fill_reduce_kernels.cpp
     reorder/rcm_kernels.cpp
     solver/gmres_kernels.cpp
     solver/cb_gmres_kernels.cpp
@@ -68,6 +69,11 @@ target_link_libraries(ginkgo_omp PRIVATE ginkgo_hip)
 # Need to link against ginkgo_dpcpp for the `raw_copy_to(DpcppExecutor ...)` method
 target_link_libraries(ginkgo_omp PRIVATE ginkgo_dpcpp)
 target_link_libraries(ginkgo_omp PUBLIC ginkgo_device)
+
+if (GINKGO_HAVE_METIS)
+  target_link_libraries(ginkgo_omp PRIVATE METIS::METIS)
+  target_include_directories(ginkgo_omp PRIVATE ${METIS_INCLUDE_DIR})
+endif()
 
 ginkgo_default_includes(ginkgo_omp)
 ginkgo_install_library(ginkgo_omp)

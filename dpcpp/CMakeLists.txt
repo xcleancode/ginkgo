@@ -40,6 +40,7 @@ target_sources(ginkgo_dpcpp
     multigrid/amgx_pgm_kernels.dp.cpp
     preconditioner/isai_kernels.dp.cpp
     preconditioner/jacobi_kernels.dp.cpp
+    reorder/metis_fill_reduce_kernels.dp.cpp
     reorder/rcm_kernels.dp.cpp
     solver/gmres_kernels.dp.cpp
     solver/cb_gmres_kernels.dp.cpp

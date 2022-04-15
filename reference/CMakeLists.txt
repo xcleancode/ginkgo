@@ -31,6 +31,7 @@ target_sources(ginkgo_reference
     multigrid/amgx_pgm_kernels.cpp
     preconditioner/isai_kernels.cpp
     preconditioner/jacobi_kernels.cpp
+    reorder/metis_fill_reduce_kernels.cpp
     reorder/rcm_kernels.cpp
     solver/bicg_kernels.cpp
     solver/bicgstab_kernels.cpp
@@ -55,6 +56,11 @@ target_compile_options(ginkgo_reference PRIVATE "${GINKGO_COMPILER_FLAGS}")
 
 if (GINKGO_CHECK_CIRCULAR_DEPS)
     ginkgo_check_headers(ginkgo_reference "")
+endif()
+
+if (GINKGO_HAVE_METIS)
+  target_link_libraries(ginkgo_reference PRIVATE METIS::METIS)
+  target_include_directories(ginkgo_reference PRIVATE ${METIS_INCLUDE_DIR})
 endif()
 
 if(GINKGO_BUILD_TESTS)

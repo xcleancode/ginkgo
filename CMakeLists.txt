@@ -49,6 +49,7 @@ option(GINKGO_SKIP_DEPENDENCY_UPDATE
 option(GINKGO_EXPORT_BUILD_DIR
     "Make Ginkgo export its build directory to the CMake package registry."
     OFF)
+option(GINKGO_WITH_METIS "Allow interfacing and usage of the Metis graph partitioning and matrix re-ordering library" OFF)
 option(GINKGO_WITH_CLANG_TIDY "Make Ginkgo call `clang-tidy` to find programming issues." OFF)
 option(GINKGO_WITH_IWYU "Make Ginkgo call `iwyu` (Include What You Use) to find include issues." OFF)
 option(GINKGO_WITH_CCACHE "Use ccache if available to speed up C++ and CUDA rebuilds by caching compilations." ON)
@@ -240,6 +241,14 @@ if(MSVC)
     else()
         set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS FALSE)
     endif()
+endif()
+
+set(GINKGO_HAVE_METIS 0)
+if (GINKGO_WITH_METIS)
+  find_package(METIS REQUIRED)
+  if (METIS_FOUND)
+    set(GINKGO_HAVE_METIS 1)
+  endif()
 endif()
 
 configure_file(${Ginkgo_SOURCE_DIR}/include/ginkgo/config.hpp.in

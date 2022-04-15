@@ -64,6 +64,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "core/multigrid/amgx_pgm_kernels.hpp"
 #include "core/preconditioner/isai_kernels.hpp"
 #include "core/preconditioner/jacobi_kernels.hpp"
+#include "core/reorder/metis_fill_reduce_kernels.hpp"
 #include "core/reorder/rcm_kernels.hpp"
 #include "core/solver/bicg_kernels.hpp"
 #include "core/solver/bicgstab_kernels.hpp"
@@ -752,6 +753,20 @@ GKO_STUB_VALUE_AND_INDEX_TYPE(GKO_DECLARE_AMGX_PGM_COMPUTE_COARSE_COO);
 
 
 }  // namespace amgx_pgm
+
+
+namespace metis_fill_reduce {
+
+
+GKO_STUB_INDEX_TYPE(GKO_DECLARE_METIS_FILL_REDUCE_GET_PERMUTATION_KERNEL);
+GKO_STUB_VALUE_AND_INDEX_TYPE(
+    GKO_DECLARE_METIS_FILL_REDUCE_CONSTRUCT_PERMUTATION_KERNEL);
+GKO_STUB_VALUE_AND_INDEX_TYPE(
+    GKO_DECLARE_METIS_FILL_REDUCE_CONSTRUCT_INVERSE_PERMUTATION_KERNEL);
+GKO_STUB_VALUE_AND_INDEX_TYPE(GKO_DECLARE_METIS_FILL_REDUCE_PERMUTE_KERNEL);
+
+
+}  // namespace metis_fill_reduce
 
 
 namespace set_all_statuses {
