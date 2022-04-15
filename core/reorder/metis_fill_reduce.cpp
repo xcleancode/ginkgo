@@ -39,10 +39,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ginkgo/core/base/array.hpp>
 #include <ginkgo/core/base/exception_helpers.hpp>
 #include <ginkgo/core/base/executor.hpp>
+#include <ginkgo/core/base/metis_types.hpp>
 #include <ginkgo/core/base/polymorphic_object.hpp>
 #include <ginkgo/core/base/types.hpp>
 #include <ginkgo/core/base/utils.hpp>
 #include <ginkgo/core/matrix/csr.hpp>
+#include <ginkgo/core/matrix/permutation.hpp>
+#include <ginkgo/core/matrix/sparsity_csr.hpp>
 
 
 #include "core/matrix/csr_kernels.hpp"
@@ -55,62 +58,32 @@ namespace metis_fill_reduce {
 
 
 GKO_REGISTER_OPERATION(get_permutation, metis_fill_reduce::get_permutation);
-GKO_REGISTER_OPERATION(construct_inverse_permutation_matrix,
-                       metis_fill_reduce::construct_inverse_permutation_matrix);
-GKO_REGISTER_OPERATION(construct_permutation_matrix,
-                       metis_fill_reduce::construct_permutation_matrix);
-GKO_REGISTER_OPERATION(permute, metis_fill_reduce::permute);
 
 
 }  // namespace metis_fill_reduce
 
 
 template <typename ValueType, typename IndexType>
-void MetisFillReduce<ValueType, IndexType>::generate() const
+void MetisFillReduce<ValueType, IndexType>::generate(
+    std::shared_ptr<const Executor>& exec,
+    std::unique_ptr<SparsityMatrix> adjacency_matrix) const
 {
-    const gko::size_type num_rows = system_matrix_->get_size()[0];
-    const auto exec = this->get_executor();
+    IndexType num_rows = adjacency_matrix->get_size()[0];
+    const auto mtx = adjacency_matrix.get();
+
     exec->run(metis_fill_reduce::make_get_permutation(
-        num_rows, system_matrix_->get_const_row_ptrs(),
-        system_matrix_->get_const_col_idxs(), vertex_weights_->get_const_data(),
-        permutation_->get_data(), inv_permutation_->get_data()));
-
-    exec->run(metis_fill_reduce::make_construct_permutation_matrix(
-        permutation_->get_const_data(), gko::lend(permutation_mat_)));
-
-    if (parameters_.construct_inverse_permutation) {
-        exec->run(metis_fill_reduce::make_construct_inverse_permutation_matrix(
-            inv_permutation_->get_const_data(),
-            gko::lend(inv_permutation_mat_)));
-    }
+        num_rows, mtx->get_const_row_ptrs(), mtx->get_const_col_idxs(),
+        parameters_.vertex_weights.get_const_data()
+            ? parameters_.vertex_weights.get_const_data()
+            : nullptr,
+        permutation_->get_permutation(), inv_permutation_->get_permutation()));
 }
 
-
-template <typename ValueType, typename IndexType>
-void MetisFillReduce<ValueType, IndexType>::permute(LinOp* to_permute) const
-{
-    const auto exec = this->get_executor();
-
-    exec->run(metis_fill_reduce::make_permute(gko::lend(permutation_mat_),
-                                              to_permute));
-}
-
-
-template <typename ValueType, typename IndexType>
-void MetisFillReduce<ValueType, IndexType>::inverse_permute(
-    LinOp* to_permute) const
-{
-    const auto exec = this->get_executor();
-
-    if (parameters_.construct_inverse_permutation) {
-        exec->run(metis_fill_reduce::make_permute(
-            gko::lend(inv_permutation_mat_), to_permute));
-    }
-}
 
 #define GKO_DECLARE_METIS_FILL_REDUCE(ValueType, IndexType) \
     class MetisFillReduce<ValueType, IndexType>
-GKO_INSTANTIATE_FOR_EACH_VALUE_AND_INDEX_TYPE(GKO_DECLARE_METIS_FILL_REDUCE);
+GKO_INSTANTIATE_FOR_EACH_VALUE_AND_METIS_INDEX_TYPE(
+    GKO_DECLARE_METIS_FILL_REDUCE);
 
 
 }  // namespace reorder

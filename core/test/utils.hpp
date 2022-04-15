@@ -45,6 +45,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #include <ginkgo/core/base/math.hpp>
+#include <ginkgo/core/base/metis_types.hpp>
 #include <ginkgo/core/base/name_demangling.hpp>
 #include <ginkgo/core/base/types.hpp>
 
@@ -113,6 +114,18 @@ using RealValueAndIndexTypes =
     ::testing::Types<float, gko::int32, gko::int64, gko::size_type>;
 #else
     ::testing::Types<float, double, gko::int32, gko::int64, gko::size_type>;
+#endif
+
+
+using ValueMetisIndexTypes =
+#if GINKGO_DPCPP_SINGLE_MODE
+    ::testing::Types<std::tuple<float, gko::int32>,
+                     std::tuple<std::complex<float>, gko::int32>>;
+#else
+    ::testing::Types<std::tuple<float, gko::int32>,
+                     std::tuple<double, gko::int32>,
+                     std::tuple<std::complex<float>, gko::int32>,
+                     std::tuple<std::complex<double>, gko::int32>>;
 #endif
 
 

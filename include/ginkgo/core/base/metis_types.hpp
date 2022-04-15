@@ -30,37 +30,62 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************<GINKGO LICENSE>*******************************/
 
-#include "core/reorder/metis_fill_reduce_kernels.hpp"
+#ifndef GKO_CORE_METIS_TYPES_HPP_
+#define GKO_CORE_METIS_TYPES_HPP_
 
 
-#include <ginkgo/core/base/array.hpp>
-#include <ginkgo/core/base/std_extensions.hpp>
-#include <ginkgo/core/matrix/csr.hpp>
+#include <cassert>
+#include <climits>
+#include <cstddef>
+#include <cstdint>
+
+
+#include <complex>
+#include <type_traits>
+
+
+#include <ginkgo/config.hpp>
+
+
+#if GKO_HAVE_METIS
+#include <metis.h>
+#define metis_indextype idx_t
+#else
+#define metis_indextype int32
+#endif
 
 
 namespace gko {
-namespace kernels {
-namespace dpcpp {
+
+
 /**
- * @brief The Metis fill reduce ordering namespace.
+ * Instantiates a template for each index type compiled by Metis.
  *
- * @ingroup reorder
+ * @param _macro  A macro which expands the template instantiation
+ *                (not including the leading `template` specifier).
+ *                Should take one argument, which is replaced by the
+ *                value type.
  */
-namespace metis_fill_reduce {
+#define GKO_INSTANTIATE_FOR_EACH_METIS_INDEX_TYPE(_macro) \
+    template _macro(metis_indextype)
 
 
-template <typename IndexType>
-void get_permutation(std::shared_ptr<const DefaultExecutor> exec,
-                     IndexType num_vertices, const IndexType* row_ptrs,
-                     const IndexType* col_idxs, const IndexType* vertex_weights,
-                     IndexType* permutation,
-                     IndexType* inv_permutation) GKO_NOT_IMPLEMENTED;
+/**
+ * Instantiates a template for each index type compiled by Metis.
+ *
+ * @param _macro  A macro which expands the template instantiation
+ *                (not including the leading `template` specifier).
+ *                Should take one argument, which is replaced by the
+ *                value type.
+ */
+#define GKO_INSTANTIATE_FOR_EACH_VALUE_AND_METIS_INDEX_TYPE(_macro) \
+    template _macro(float, metis_indextype);                        \
+    template _macro(double, metis_indextype);                       \
+    template _macro(std::complex<float>, metis_indextype);          \
+    template _macro(std::complex<double>, metis_indextype)
 
-GKO_INSTANTIATE_FOR_EACH_METIS_INDEX_TYPE(
-    GKO_DECLARE_METIS_FILL_REDUCE_GET_PERMUTATION_KERNEL);
 
-
-}  // namespace metis_fill_reduce
-}  // namespace dpcpp
-}  // namespace kernels
 }  // namespace gko
+
+
+#endif  // GKO_CORE_METIS_TYPES_HPP_

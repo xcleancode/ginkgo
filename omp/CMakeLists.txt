@@ -72,7 +72,6 @@ target_link_libraries(ginkgo_omp PUBLIC ginkgo_device)
 
 if (GINKGO_HAVE_METIS)
   target_link_libraries(ginkgo_omp PRIVATE METIS::METIS)
-  target_include_directories(ginkgo_omp PRIVATE ${METIS_INCLUDE_DIR})
 endif()
 
 ginkgo_default_includes(ginkgo_omp)

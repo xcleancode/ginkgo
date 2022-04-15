@@ -172,4 +172,4 @@ public:                                                                        \
 }  // namespace gko
 
 
-#endif  // GKO_PUBLIC_CORE_REORDER_REORDERING_BASE_HPP_
+#endif  // GKO_CORE_REORDER_REORDERING_BASE_HPP_

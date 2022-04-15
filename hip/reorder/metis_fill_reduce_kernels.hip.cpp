@@ -34,15 +34,19 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #include <ginkgo/core/base/array.hpp>
+#include <ginkgo/core/base/metis_types.hpp>
 #include <ginkgo/core/base/std_extensions.hpp>
+#include <ginkgo/core/base/types.hpp>
 #include <ginkgo/core/matrix/csr.hpp>
+#include <ginkgo/core/matrix/permutation.hpp>
+#include <ginkgo/core/matrix/sparsity_csr.hpp>
 
 
 namespace gko {
 namespace kernels {
-namespace dpcpp {
+namespace hip {
 /**
- * @brief The Metis fill reduce ordering namespace.
+ * @brief The Metis fill reduce ordering namespace
  *
  * @ingroup reorder
  */
@@ -61,6 +65,6 @@ GKO_INSTANTIATE_FOR_EACH_METIS_INDEX_TYPE(
 
 
 }  // namespace metis_fill_reduce
-}  // namespace dpcpp
+}  // namespace hip
 }  // namespace kernels
 }  // namespace gko

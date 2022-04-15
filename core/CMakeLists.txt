@@ -96,6 +96,10 @@ if (GINKGO_BUILD_HIP AND GINKGO_HIP_PLATFORM MATCHES "${HIP_PLATFORM_AMD_REGEX}"
     list(APPEND GKO_RPATH_ADDITIONS "${HIP_PATH}/lib")
 endif()
 
+if (GINKGO_HAVE_METIS)
+  target_link_libraries(ginkgo PRIVATE METIS::METIS)
+endif()
+
 ginkgo_default_includes(ginkgo)
 ginkgo_install_library(ginkgo "${GKO_RPATH_ADDITIONS}")
 

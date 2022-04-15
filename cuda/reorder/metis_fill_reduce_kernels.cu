@@ -34,65 +34,34 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #include <ginkgo/core/base/array.hpp>
+#include <ginkgo/core/base/metis_types.hpp>
 #include <ginkgo/core/base/std_extensions.hpp>
+#include <ginkgo/core/base/types.hpp>
 #include <ginkgo/core/matrix/csr.hpp>
-
-
-#include "cuda/base/math.hpp"
-#include "cuda/base/types.hpp"
-#include "cuda/components/prefix_sum.cuh"
+#include <ginkgo/core/matrix/permutation.hpp>
+#include <ginkgo/core/matrix/sparsity_csr.hpp>
 
 
 namespace gko {
 namespace kernels {
 namespace cuda {
 /**
- * @brief The parallel ilu factorization namespace.
+ * @brief The Metis fill reduce ordering namespace
  *
- * @ingroup factor
+ * @ingroup reorder
  */
 namespace metis_fill_reduce {
 
 
 template <typename IndexType>
-void get_permutation(std::shared_ptr<const CudaExecutor> exec,
-                     const gko::size_type num_vertices,
-                     const IndexType* mat_row_ptrs,
-                     const IndexType* mat_col_idxs,
-                     const IndexType* vertex_weights, IndexType* permutation,
+void get_permutation(std::shared_ptr<const DefaultExecutor> exec,
+                     IndexType num_vertices, const IndexType* row_ptrs,
+                     const IndexType* col_idxs, const IndexType* vertex_weights,
+                     IndexType* permutation,
                      IndexType* inv_permutation) GKO_NOT_IMPLEMENTED;
 
-GKO_INSTANTIATE_FOR_EACH_INDEX_TYPE(
+GKO_INSTANTIATE_FOR_EACH_METIS_INDEX_TYPE(
     GKO_DECLARE_METIS_FILL_REDUCE_GET_PERMUTATION_KERNEL);
-
-
-template <typename ValueType, typename IndexType>
-void construct_inverse_permutation_matrix(
-    std::shared_ptr<const CudaExecutor> exec, const IndexType* inv_permutation,
-    gko::matrix::Csr<ValueType, IndexType>* inverse_permutation_matrix)
-    GKO_NOT_IMPLEMENTED;
-
-GKO_INSTANTIATE_FOR_EACH_VALUE_AND_INDEX_TYPE(
-    GKO_DECLARE_METIS_FILL_REDUCE_CONSTRUCT_INVERSE_PERMUTATION_KERNEL);
-
-
-template <typename ValueType, typename IndexType>
-void construct_permutation_matrix(
-    std::shared_ptr<const CudaExecutor> exec, const IndexType* permutation,
-    gko::matrix::Csr<ValueType, IndexType>* permutation_matrix)
-    GKO_NOT_IMPLEMENTED;
-
-GKO_INSTANTIATE_FOR_EACH_VALUE_AND_INDEX_TYPE(
-    GKO_DECLARE_METIS_FILL_REDUCE_CONSTRUCT_PERMUTATION_KERNEL);
-
-
-template <typename ValueType, typename IndexType>
-void permute(std::shared_ptr<const CudaExecutor> exec,
-             gko::matrix::Csr<ValueType, IndexType>* permutation_matrix,
-             gko::LinOp* to_permute) GKO_NOT_IMPLEMENTED;
-
-GKO_INSTANTIATE_FOR_EACH_VALUE_AND_INDEX_TYPE(
-    GKO_DECLARE_METIS_FILL_REDUCE_PERMUTE_KERNEL);
 
 
 }  // namespace metis_fill_reduce

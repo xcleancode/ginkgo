@@ -33,62 +33,133 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ginkgo/core/reorder/metis_fill_reduce.hpp>
 
 
+#include <algorithm>
+#include <fstream>
 #include <memory>
-#include <typeinfo>
 
 
 #include <gtest/gtest.h>
 
 
 #include <ginkgo/core/base/executor.hpp>
+#include <ginkgo/core/base/metis_types.hpp>
 #include <ginkgo/core/matrix/csr.hpp>
 #include <ginkgo/core/matrix/dense.hpp>
+#include <ginkgo/core/matrix/sparsity_csr.hpp>
 
 
+#include "core/test/utils.hpp"
 #include "core/test/utils/assertions.hpp"
 
 
 namespace {
 
 
+template <typename ValueIndexType>
 class MetisFillReduce : public ::testing::Test {
 protected:
-    using Mtx = gko::matrix::Dense<>;
-    using CsrMtx = gko::matrix::Csr<>;
-    using reorder_type = gko::reorder::MetisFillReduce<>;
+    using v_type =
+        typename std::tuple_element<0, decltype(ValueIndexType())>::type;
+    using i_type =
+        typename std::tuple_element<1, decltype(ValueIndexType())>::type;
+    using reorder_type = gko::reorder::MetisFillReduce<v_type, i_type>;
+    using Mtx = gko::matrix::Dense<v_type>;
+    using CsrMtx = gko::matrix::Csr<v_type, i_type>;
     MetisFillReduce()
         : exec(gko::ReferenceExecutor::create()),
-          mtx(gko::initialize<Mtx>(
-              {{2, -1.0, 0.0}, {-1.0, 2, -1.0}, {0.0, -1.0, 2}}, exec)),
-          csr_mtx(gko::initialize<CsrMtx>(
-              {{2, -1.0, 0.0}, {-1.0, 2, -1.0}, {0.0, -1.0, 2}}, exec)),
           metis_fill_reduce_factory(reorder_type::build().on(exec)),
-          reorder_op(metis_fill_reduce_factory->generate(mtx))
+          // clang-format off
+          id3_mtx(gko::initialize<CsrMtx>(
+              {{1.0, 0.0, 0.0}, 
+              {0.0, 1.0, 0.0}, 
+              {0.0, 0.0, 1.0}}, exec)),
+          not_id3_mtx(gko::initialize<CsrMtx>(
+              {{1.0, 0.0, 1.0}, 
+              {0.0, 1.0, 0.0}, 
+              {1.0, 0.0, 1.0}}, exec)),
+          // clang-format on
+          reorder_op(metis_fill_reduce_factory->generate(id3_mtx))
     {}
 
     std::shared_ptr<const gko::Executor> exec;
-    std::shared_ptr<Mtx> mtx;
-    std::shared_ptr<CsrMtx> csr_mtx;
-    std::unique_ptr<reorder_type::Factory> metis_fill_reduce_factory;
+    std::shared_ptr<CsrMtx> id3_mtx;
+    std::shared_ptr<CsrMtx> not_id3_mtx;
+    std::unique_ptr<typename reorder_type::Factory> metis_fill_reduce_factory;
     std::unique_ptr<reorder_type> reorder_op;
 };
 
+TYPED_TEST_SUITE(MetisFillReduce, gko::test::ValueMetisIndexTypes,
+                 PairTypenameNameGenerator);
 
-TEST_F(MetisFillReduce, MetisFillReduceFactoryCreatesCorrectReorderOp)
+
+TYPED_TEST(MetisFillReduce, CanBeCleared)
 {
-    auto sys_mtx = reorder_op->get_system_matrix();
+    this->reorder_op->clear();
 
-    ASSERT_NE(reorder_op->get_system_matrix(), nullptr);
-    GKO_ASSERT_MTX_NEAR(sys_mtx.get(), csr_mtx.get(), 0);
+    auto reorder_op_perm = this->reorder_op->get_permutation();
+
+    ASSERT_EQ(reorder_op_perm, nullptr);
 }
 
 
-TEST_F(MetisFillReduce, CanBeCleared)
+TYPED_TEST(MetisFillReduce, CanBeCopied)
 {
-    reorder_op->clear();
+    auto metis_fill_reduce =
+        this->metis_fill_reduce_factory->generate(this->id3_mtx);
+    auto metis_fill_reduce_copy =
+        this->metis_fill_reduce_factory->generate(this->not_id3_mtx);
 
-    auto reorder_op_mtx = reorder_op->get_system_matrix();
-    ASSERT_EQ(reorder_op_mtx, nullptr);
+    metis_fill_reduce_copy->copy_from(metis_fill_reduce.get());
+
+    EXPECT_EQ(
+        metis_fill_reduce_copy->get_permutation()->get_const_permutation()[0],
+        1);
+    EXPECT_EQ(
+        metis_fill_reduce_copy->get_permutation()->get_const_permutation()[1],
+        2);
+    EXPECT_EQ(
+        metis_fill_reduce_copy->get_permutation()->get_const_permutation()[2],
+        0);
+}
+
+
+TYPED_TEST(MetisFillReduce, CanBeMoved)
+{
+    auto metis_fill_reduce =
+        this->metis_fill_reduce_factory->generate(this->id3_mtx);
+    auto metis_fill_reduce_move =
+        this->metis_fill_reduce_factory->generate(this->not_id3_mtx);
+
+    metis_fill_reduce_move->move_from(metis_fill_reduce.get());
+
+    EXPECT_EQ(
+        metis_fill_reduce_move->get_permutation()->get_const_permutation()[0],
+        1);
+    EXPECT_EQ(
+        metis_fill_reduce_move->get_permutation()->get_const_permutation()[1],
+        2);
+    EXPECT_EQ(
+        metis_fill_reduce_move->get_permutation()->get_const_permutation()[2],
+        0);
+}
+
+
+TYPED_TEST(MetisFillReduce, CanBeCloned)
+{
+    auto metis_fill_reduce =
+        this->metis_fill_reduce_factory->generate(this->id3_mtx);
+
+    auto metis_fill_reduce_clone = metis_fill_reduce->clone();
+
+    EXPECT_EQ(
+        metis_fill_reduce_clone->get_permutation()->get_const_permutation()[0],
+        1);
+    EXPECT_EQ(
+        metis_fill_reduce_clone->get_permutation()->get_const_permutation()[1],
+        2);
+    EXPECT_EQ(
+        metis_fill_reduce_clone->get_permutation()->get_const_permutation()[2],
+        0);
 }
 
 

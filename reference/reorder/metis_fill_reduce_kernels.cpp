@@ -30,19 +30,29 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************<GINKGO LICENSE>*******************************/
 
+
 #include "core/reorder/metis_fill_reduce_kernels.hpp"
 
 
+#include <algorithm>
+#include <memory>
+#include <vector>
+
+
 #include <ginkgo/config.hpp>
+#include <ginkgo/core/base/array.hpp>
 #include <ginkgo/core/base/math.hpp>
+#include <ginkgo/core/base/metis_types.hpp>
+#include <ginkgo/core/base/types.hpp>
 #include <ginkgo/core/matrix/coo.hpp>
 #include <ginkgo/core/matrix/csr.hpp>
+#include <ginkgo/core/matrix/permutation.hpp>
+#include <ginkgo/core/matrix/sparsity_csr.hpp>
 
 
 #if GKO_HAVE_METIS
 #include <metis.h>
 #endif
-
 
 namespace gko {
 namespace kernels {
@@ -56,47 +66,30 @@ namespace metis_fill_reduce {
 
 
 template <typename IndexType>
-void get_permutation(std::shared_ptr<const ReferenceExecutor> exec,
-                     const gko::size_type num_vertices,
-                     const IndexType* mat_row_ptrs,
-                     const IndexType* mat_col_idxs,
-                     const IndexType* vertex_weights, IndexType* permutation,
-                     IndexType* inv_permutation)
-{}
+void get_permutation(std::shared_ptr<const DefaultExecutor> exec,
+                     IndexType num_vertices, const IndexType* row_ptrs,
+                     const IndexType* col_idxs, const IndexType* vertex_weights,
+                     IndexType* permutation, IndexType* inv_permutation)
+#if GKO_HAVE_METIS
+{
+    IndexType num_vtxs = IndexType(num_vertices);
+    idx_t options[METIS_NOPTIONS];
+    GKO_ASSERT_NO_METIS_ERRORS(METIS_SetDefaultOptions(options));
+    GKO_ASSERT_NO_METIS_ERRORS(METIS_NodeND(
+        &num_vtxs, const_cast<IndexType*>(row_ptrs),
+        const_cast<IndexType*>(col_idxs),
+        vertex_weights != nullptr ? const_cast<IndexType*>(vertex_weights)
+                                  : NULL,
+        options, permutation, inv_permutation));
+}
+#else
+{
+    std::iota(permutation, permutation + num_vertices, 0);
+}
+#endif
 
-GKO_INSTANTIATE_FOR_EACH_INDEX_TYPE(
+GKO_INSTANTIATE_FOR_EACH_METIS_INDEX_TYPE(
     GKO_DECLARE_METIS_FILL_REDUCE_GET_PERMUTATION_KERNEL);
-
-
-template <typename ValueType, typename IndexType>
-void construct_inverse_permutation_matrix(
-    std::shared_ptr<const ReferenceExecutor> exec,
-    const IndexType* inv_permutation,
-    gko::matrix::Csr<ValueType, IndexType>* inverse_permutation_matrix)
-{}
-
-GKO_INSTANTIATE_FOR_EACH_VALUE_AND_INDEX_TYPE(
-    GKO_DECLARE_METIS_FILL_REDUCE_CONSTRUCT_INVERSE_PERMUTATION_KERNEL);
-
-
-template <typename ValueType, typename IndexType>
-void construct_permutation_matrix(
-    std::shared_ptr<const ReferenceExecutor> exec, const IndexType* permutation,
-    gko::matrix::Csr<ValueType, IndexType>* permutation_matrix)
-{}
-
-GKO_INSTANTIATE_FOR_EACH_VALUE_AND_INDEX_TYPE(
-    GKO_DECLARE_METIS_FILL_REDUCE_CONSTRUCT_PERMUTATION_KERNEL);
-
-
-template <typename ValueType, typename IndexType>
-void permute(std::shared_ptr<const ReferenceExecutor> exec,
-             gko::matrix::Csr<ValueType, IndexType>* permutation_matrix,
-             gko::LinOp* to_permute)
-{}
-
-GKO_INSTANTIATE_FOR_EACH_VALUE_AND_INDEX_TYPE(
-    GKO_DECLARE_METIS_FILL_REDUCE_PERMUTE_KERNEL);
 
 
 }  // namespace metis_fill_reduce

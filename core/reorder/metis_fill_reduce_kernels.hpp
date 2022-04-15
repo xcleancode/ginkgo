@@ -42,6 +42,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <ginkgo/core/base/executor.hpp>
 #include <ginkgo/core/base/lin_op.hpp>
+#include <ginkgo/core/base/metis_types.hpp>
 #include <ginkgo/core/base/types.hpp>
 #include <ginkgo/core/matrix/csr.hpp>
 #include <ginkgo/core/matrix/permutation.hpp>
@@ -55,43 +56,16 @@ namespace gko {
 namespace kernels {
 
 
-#define GKO_DECLARE_METIS_FILL_REDUCE_GET_PERMUTATION_KERNEL(IndexType)   \
-    void get_permutation(                                                 \
-        std::shared_ptr<const DefaultExecutor> exec,                      \
-        const gko::size_type num_vertices, const IndexType* mat_row_ptrs, \
-        const IndexType* mat_col_idxs, const IndexType* vertex_weights,   \
-        IndexType* permutation, IndexType* inv_permutation)
+#define GKO_DECLARE_METIS_FILL_REDUCE_GET_PERMUTATION_KERNEL(IndexType)     \
+    void get_permutation(std::shared_ptr<const DefaultExecutor> exec,       \
+                         IndexType num_vertices, const IndexType* row_ptrs, \
+                         const IndexType* col_idxs,                         \
+                         const IndexType* vertex_weights,                   \
+                         IndexType* permutation, IndexType* inv_permutation)
 
-#define GKO_DECLARE_METIS_FILL_REDUCE_CONSTRUCT_INVERSE_PERMUTATION_KERNEL( \
-    ValueType, IndexType)                                                   \
-    void construct_inverse_permutation_matrix(                              \
-        std::shared_ptr<const DefaultExecutor> exec,                        \
-        const IndexType* inv_permutation,                                   \
-        gko::matrix::Csr<ValueType, IndexType>* inverse_permutation_matrix)
-
-#define GKO_DECLARE_METIS_FILL_REDUCE_CONSTRUCT_PERMUTATION_KERNEL(ValueType, \
-                                                                   IndexType) \
-    void construct_permutation_matrix(                                        \
-        std::shared_ptr<const DefaultExecutor> exec,                          \
-        const IndexType* permutation,                                         \
-        gko::matrix::Csr<ValueType, IndexType>* permutation_matrix)
-
-#define GKO_DECLARE_METIS_FILL_REDUCE_PERMUTE_KERNEL(ValueType, IndexType)   \
-    void permute(std::shared_ptr<const DefaultExecutor> exec,                \
-                 gko::matrix::Csr<ValueType, IndexType>* permutation_matrix, \
-                 gko::LinOp* to_permute)
-
-#define GKO_DECLARE_ALL_AS_TEMPLATES                                       \
-    template <typename IndexType>                                          \
-    GKO_DECLARE_METIS_FILL_REDUCE_GET_PERMUTATION_KERNEL(IndexType);       \
-    template <typename ValueType, typename IndexType>                      \
-    GKO_DECLARE_METIS_FILL_REDUCE_CONSTRUCT_PERMUTATION_KERNEL(ValueType,  \
-                                                               IndexType); \
-    template <typename ValueType, typename IndexType>                      \
-    GKO_DECLARE_METIS_FILL_REDUCE_CONSTRUCT_INVERSE_PERMUTATION_KERNEL(    \
-        ValueType, IndexType);                                             \
-    template <typename ValueType, typename IndexType>                      \
-    GKO_DECLARE_METIS_FILL_REDUCE_PERMUTE_KERNEL(ValueType, IndexType)
+#define GKO_DECLARE_ALL_AS_TEMPLATES \
+    template <typename IndexType>    \
+    GKO_DECLARE_METIS_FILL_REDUCE_GET_PERMUTATION_KERNEL(IndexType)
 
 
 GKO_DECLARE_FOR_ALL_EXECUTOR_NAMESPACES(metis_fill_reduce,
