@@ -52,6 +52,8 @@ int main(int argc, char* argv[])
     using mtx = gko::matrix::Csr<ValueType, IndexType>;
     using cg = gko::solver::Cg<ValueType>;
     using bj = gko::preconditioner::Jacobi<ValueType, IndexType>;
+    using metis_reorder_t = gko::reorder::MetisFillReduce<ValueType, IndexType>;
+    using rcm_reorder_t = gko::reorder::Rcm<ValueType, IndexType>;
 
     // Print version information
     std::cout << gko::version_info::get() << std::endl;
@@ -62,6 +64,7 @@ int main(int argc, char* argv[])
     }
 
     const auto executor_string = argc >= 2 ? argv[1] : "reference";
+    const auto mtx_fname = argc >= 3 ? argv[2] : "A.mtx";
     // Figure out where to run the code
     std::map<std::string, std::function<std::shared_ptr<gko::Executor>()>>
         exec_map{
@@ -87,7 +90,9 @@ int main(int argc, char* argv[])
     const auto exec = exec_map.at(executor_string)();  // throws if not valid
 
     // Read data
-    auto A = share(gko::read<mtx>(std::ifstream("data/A.mtx"), exec));
+    auto A = share(
+        gko::read<mtx>(std::ifstream("data/" + std::string(mtx_fname)), exec));
+    A->set_strategy(std::make_shared<mtx::sparselib>());
     // Create RHS and initial guess as 1
     gko::size_type size = A->get_size()[0];
     auto host_x = vec::create(exec->get_master(), gko::dim<2>(size, 1));
@@ -96,69 +101,70 @@ int main(int argc, char* argv[])
     }
     auto x = gko::clone(exec, host_x);
     auto b = gko::clone(exec, host_x);
+    auto metis_reorder =
+        metis_reorder_t::build().on(exec)->generate(A)->get_permutation();
+    auto rcm_reorder =
+        rcm_reorder_t::build().on(exec)->generate(A)->get_permutation();
 
-    // Calculate initial residual by overwriting b
-    auto one = gko::initialize<vec>({1.0}, exec);
-    auto neg_one = gko::initialize<vec>({-1.0}, exec);
-    auto initres = gko::initialize<real_vec>({0.0}, exec);
-    A->apply(lend(one), lend(x), lend(neg_one), lend(b));
-    b->compute_norm2(lend(initres));
+    auto rcm_A =
+        gko::share(mtx::create(exec, std::make_shared<mtx::sparselib>()));
+    auto metis_A =
+        gko::share(mtx::create(exec, std::make_shared<mtx::sparselib>()));
+    rcm_A->copy_from(A.get());
+    metis_A->copy_from(A.get());
 
-    // copy b again
-    b->copy_from(host_x.get());
-    const RealValueType reduction_factor = 1e-7;
-    auto iter_stop = gko::share(
-        gko::stop::Iteration::build().with_max_iters(10000u).on(exec));
-    auto tol_stop = gko::share(gko::stop::ResidualNorm<ValueType>::build()
-                                   .with_reduction_factor(reduction_factor)
-                                   .on(exec));
-
-    std::shared_ptr<const gko::log::Convergence<ValueType>> logger =
-        gko::log::Convergence<ValueType>::create(exec);
-    iter_stop->add_logger(logger);
-    tol_stop->add_logger(logger);
-
-    // Create solver factory
-    auto solver_gen =
-        cg::build()
-            .with_criteria(iter_stop, tol_stop)
-            // Add preconditioner, these 2 lines are the only
-            // difference from the simple solver example
-            .with_preconditioner(bj::build()
-                                     .with_max_block_size(16u)
-                                     .with_storage_optimization(
-                                         gko::precision_reduction::autodetect())
-                                     .on(exec))
-            .on(exec);
-    // Create solver
-    solver_gen->add_logger(logger);
-    auto solver = solver_gen->generate(A);
-
+    metis_reorder->apply(A.get(), metis_A.get());
+    rcm_reorder->apply(A.get(), rcm_A.get());
 
     // Solve system
     exec->synchronize();
-    std::chrono::nanoseconds time(0);
-    auto tic = std::chrono::steady_clock::now();
-    solver->apply(lend(b), lend(x));
-    auto toc = std::chrono::steady_clock::now();
-    time += std::chrono::duration_cast<std::chrono::nanoseconds>(toc - tic);
-
-    // Calculate residual
-    auto res = gko::initialize<real_vec>({0.0}, exec);
-    A->apply(lend(one), lend(x), lend(neg_one), lend(b));
-    b->compute_norm2(lend(res));
-    auto impl_res = gko::as<real_vec>(logger->get_implicit_sq_resnorm());
-
-    std::cout << "Initial residual norm sqrt(r^T r):\n";
-    write(std::cout, lend(initres));
-    std::cout << "Final residual norm sqrt(r^T r):\n";
-    write(std::cout, lend(res));
-    std::cout << "Implicit residual norm squared (r^2):\n";
-    write(std::cout, lend(impl_res));
+    std::chrono::nanoseconds base_time(0);
+    std::chrono::nanoseconds rcm_time(0);
+    std::chrono::nanoseconds metis_time(0);
+    auto x_clone = x->clone();
+    for (int i = 0; i < 3; ++i) {
+        x->copy_from(x_clone.get());
+        A->apply(lend(b), lend(x));
+        exec->synchronize();
+        x->copy_from(x_clone.get());
+        rcm_A->apply(lend(b), lend(x));
+        exec->synchronize();
+        x->copy_from(x_clone.get());
+        metis_A->apply(lend(b), lend(x));
+        exec->synchronize();
+    }
+    for (int i = 0; i < 10; ++i) {
+        x->copy_from(x_clone.get());
+        auto btic = std::chrono::steady_clock::now();
+        A->apply(lend(b), lend(x));
+        exec->synchronize();
+        auto btoc = std::chrono::steady_clock::now();
+        base_time +=
+            std::chrono::duration_cast<std::chrono::nanoseconds>(btoc - btic);
+        x->copy_from(x_clone.get());
+        auto rtic = std::chrono::steady_clock::now();
+        rcm_A->apply(lend(b), lend(x));
+        exec->synchronize();
+        auto rtoc = std::chrono::steady_clock::now();
+        rcm_time +=
+            std::chrono::duration_cast<std::chrono::nanoseconds>(rtoc - rtic);
+        x->copy_from(x_clone.get());
+        auto mtic = std::chrono::steady_clock::now();
+        metis_A->apply(lend(b), lend(x));
+        exec->synchronize();
+        auto mtoc = std::chrono::steady_clock::now();
+        metis_time +=
+            std::chrono::duration_cast<std::chrono::nanoseconds>(mtoc - mtic);
+    }
 
     // Print solver statistics
-    std::cout << "CG iteration count:     " << logger->get_num_iterations()
+    std::cout << "Matrix size: " << A->get_size()
+              << "\nMatrix nnz count: " << A->get_num_stored_elements()
+              << "\n\tBase SpMV execution time [ms]: "
+              << static_cast<double>(base_time.count()) / 10000000.0
+              << "\n\tRcm SpMV execution time [ms]: "
+              << static_cast<double>(rcm_time.count()) / 10000000.0
+              << "\n\tMetis SpMV execution time [ms]: "
+              << static_cast<double>(metis_time.count()) / 10000000.0
               << std::endl;
-    std::cout << "CG execution time [ms]: "
-              << static_cast<double>(time.count()) / 1000000.0 << std::endl;
 }

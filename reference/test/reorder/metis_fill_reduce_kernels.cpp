@@ -56,9 +56,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace {
 
 
-#if GKO_HAVE_METIS
-
-
 class MetisFillReduce : public ::testing::Test {
 protected:
     using v_type = double;
@@ -118,6 +115,5 @@ TEST_F(MetisFillReduce, CreatesAPermutation)
     assert_correct_permutation(p.get());
 }
 
-#endif
 
 }  // namespace
