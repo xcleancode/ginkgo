@@ -54,6 +54,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace {
 
+#if GKO_HAVE_METIS
+
 
 template <typename ValueIndexType>
 class MetisFillReduce : public ::testing::Test {
@@ -162,5 +164,6 @@ TYPED_TEST(MetisFillReduce, CanBeCloned)
         0);
 }
 
+#endif
 
 }  // namespace

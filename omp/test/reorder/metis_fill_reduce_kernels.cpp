@@ -59,7 +59,7 @@ namespace {
 class MetisFillReduce : public ::testing::Test {
 protected:
     using v_type = double;
-    using i_type = metis_indextype;
+    using i_type = gko::metis_indextype;
     using Mtx = gko::matrix::Dense<v_type>;
     using CsrMtx = gko::matrix::Csr<v_type, i_type>;
     using reorder_type = gko::reorder::MetisFillReduce<v_type, i_type>;

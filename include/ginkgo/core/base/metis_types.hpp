@@ -47,15 +47,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ginkgo/config.hpp>
 
 
+namespace gko {
+
+
 #if GKO_HAVE_METIS
 #include <metis.h>
 #define metis_indextype idx_t
 #else
 #define metis_indextype int32
 #endif
-
-
-namespace gko {
 
 
 /**

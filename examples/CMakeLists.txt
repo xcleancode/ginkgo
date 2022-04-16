@@ -10,6 +10,7 @@ set(EXAMPLES_EXEC_LIST
     ir-ilu-preconditioned-solver
     inverse-iteration
     iterative-refinement
+    matrix-reordering
     mixed-precision-ir
     nine-pt-stencil-solver
     poisson-solver
