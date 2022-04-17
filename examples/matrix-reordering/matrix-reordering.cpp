@@ -50,6 +50,7 @@ int main(int argc, char* argv[])
     using vec = gko::matrix::Dense<ValueType>;
     using real_vec = gko::matrix::Dense<RealValueType>;
     using mtx = gko::matrix::Csr<ValueType, IndexType>;
+    using hyb_mtx = gko::matrix::Hybrid<ValueType, IndexType>;
     using cg = gko::solver::Cg<ValueType>;
     using bj = gko::preconditioner::Jacobi<ValueType, IndexType>;
     using metis_reorder_t = gko::reorder::MetisFillReduce<ValueType, IndexType>;
@@ -101,10 +102,11 @@ int main(int argc, char* argv[])
     }
     auto x = gko::clone(exec, host_x);
     auto b = gko::clone(exec, host_x);
-    auto metis_reorder =
-        metis_reorder_t::build().on(exec)->generate(A)->get_permutation();
-    auto rcm_reorder =
-        rcm_reorder_t::build().on(exec)->generate(A)->get_permutation();
+    auto metis_reorder = metis_reorder_t::build().on(exec)->generate(A);
+    auto rcm_reorder = rcm_reorder_t::build()
+                           // .with_construct_inverse_permutation(true)
+                           .on(exec)
+                           ->generate(A);
 
     auto rcm_A =
         gko::share(mtx::create(exec, std::make_shared<mtx::sparselib>()));
@@ -113,14 +115,58 @@ int main(int argc, char* argv[])
     rcm_A->copy_from(A.get());
     metis_A->copy_from(A.get());
 
-    metis_reorder->apply(A.get(), metis_A.get());
-    rcm_reorder->apply(A.get(), rcm_A.get());
+    metis_reorder->get_permutation()->apply(A.get(), metis_A.get());
+    rcm_reorder->get_permutation()->apply(A.get(), rcm_A.get());
+    // auto rcm_hyb_A = gko::share(
+    //     hyb_mtx::create(exec, std::make_shared<hyb_mtx::automatic>()));
+    // auto metis_hyb_A = gko::share(
+    //     hyb_mtx::create(exec, std::make_shared<hyb_mtx::automatic>()));
+    // rcm_hyb_A->copy_from(rcm_A.get());
+    // metis_hyb_A->copy_from(metis_A.get());
+
+    // std::ofstream o;
+    // o.open("metis_mat.mtx");
+    // write(o, metis_A.get());
+    // o.close();
+    // o.open("rcm_mat.mtx");
+    // write(o, rcm_A.get());
+    // o.close();
+    // o.open("base_mat.mtx");
+    // write(o, A.get());
+    // o.close();
 
     // Solve system
-    exec->synchronize();
+    // exec->synchronize();
+    // auto x0 = x->clone();
+    // auto x1 = x->clone();
+    // auto x2 = x->clone();
+    // A->apply(lend(b), lend(x0));
+    // exec->synchronize();
+    // rcm_A->apply(lend(b), lend(x1));
+    // exec->synchronize();
+    // metis_A->apply(lend(b), lend(x2));
+    // exec->synchronize();
+    // auto ix1 = x->clone();
+    // auto ix2 = x->clone();
+    // rcm_reorder->get_inverse_permutation()->apply(x1.get(), ix1.get());
+    // metis_reorder->get_inverse_permutation()->apply(x2.get(), ix2.get());
+    // auto neg_one = gko::initialize<vec>({-1.0}, exec);
+    // x1->add_scaled(neg_one.get(), ix1.get());
+    // x2->add_scaled(neg_one.get(), ix2.get());
+
+    // auto rcm_err = gko::initialize<real_vec>({0.0}, exec->get_master());
+    // auto metis_err = gko::initialize<real_vec>({0.0}, exec->get_master());
+    // ix1->compute_norm2(lend(rcm_err));
+    // ix2->compute_norm2(lend(metis_err));
+    // std::cout << " RCM error:" << std::endl;
+    // write(std::cout, rcm_err.get());
+    // std::cout << " METIS error:" << std::endl;
+    // write(std::cout, metis_err.get());
+
     std::chrono::nanoseconds base_time(0);
     std::chrono::nanoseconds rcm_time(0);
     std::chrono::nanoseconds metis_time(0);
+    exec->synchronize();
     auto x_clone = x->clone();
     for (int i = 0; i < 3; ++i) {
         x->copy_from(x_clone.get());

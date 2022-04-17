@@ -196,12 +196,12 @@ protected:
      * IndexType, or is on the wrong executor, an internal copy will be created,
      * and the original array data will not be used in the matrix.
      */
-    template <typename IndicesArray>
     Permutation(std::shared_ptr<const Executor> exec, const dim<2>& size,
-                IndicesArray&& permutation_indices,
+                Array<IndexType>&& permutation_indices,
                 const mask_type& enabled_permute = row_permute)
         : EnableLinOp<Permutation>(exec, size),
-          permutation_{exec, std::forward<IndicesArray>(permutation_indices)},
+          permutation_{exec,
+                       std::forward<Array<IndexType>>(permutation_indices)},
           row_size_(size[0]),
           col_size_(size[1]),
           enabled_permute_(enabled_permute)

@@ -166,19 +166,22 @@ protected:
         }
 
         auto const dim = adjacency_matrix->get_size();
-        permutation_ = PermutationMatrix::create(cpu_exec, dim);
+        auto p_mask = matrix::row_permute | matrix::column_permute;
+        permutation_ = PermutationMatrix::create(cpu_exec, dim, p_mask);
 
-        inv_permutation_ = PermutationMatrix::create(cpu_exec, dim);
+        inv_permutation_ = PermutationMatrix::create(cpu_exec, dim, p_mask);
 
         this->generate(cpu_exec, std::move(adjacency_matrix));
 
         // Copy back results to gpu if necessary.
         if (is_gpu_executor) {
             const auto gpu_exec = this->get_executor();
-            auto gpu_perm = share(PermutationMatrix::create(gpu_exec, dim));
+            auto gpu_perm =
+                share(PermutationMatrix::create(gpu_exec, dim, p_mask));
             gpu_perm->copy_from(permutation_.get());
             permutation_ = gpu_perm;
-            auto gpu_inv_perm = share(PermutationMatrix::create(gpu_exec, dim));
+            auto gpu_inv_perm =
+                share(PermutationMatrix::create(gpu_exec, dim, p_mask));
             gpu_inv_perm->copy_from(inv_permutation_.get());
             inv_permutation_ = gpu_inv_perm;
         }
