@@ -80,6 +80,8 @@ GKO_REGISTER_OPERATION(compute_dot, dense::compute_dot_dispatch);
 GKO_REGISTER_OPERATION(compute_conj_dot, dense::compute_conj_dot_dispatch);
 GKO_REGISTER_OPERATION(compute_norm2, dense::compute_norm2_dispatch);
 GKO_REGISTER_OPERATION(compute_norm1, dense::compute_norm1);
+GKO_REGISTER_OPERATION(compute_squared_norm2, dense::compute_squared_norm2);
+GKO_REGISTER_OPERATION(compute_sqrt, dense::compute_sqrt);
 GKO_REGISTER_OPERATION(compute_max_nnz_per_row, dense::compute_max_nnz_per_row);
 GKO_REGISTER_OPERATION(compute_hybrid_coo_row_ptrs,
                        hybrid::compute_coo_row_ptrs);
@@ -486,7 +488,11 @@ void Dense<ValueType>::convert_to(Dense<ValueType>* result) const
 template <typename ValueType>
 void Dense<ValueType>::move_to(Dense<ValueType>* result)
 {
-    this->convert_to(result);
+    if (this != result) {
+        result->values_ = std::move(this->values_);
+        result->stride_ = this->stride_;
+        result->set_size(this->get_size());
+    }
 }
 
 
