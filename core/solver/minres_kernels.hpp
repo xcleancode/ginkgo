@@ -62,7 +62,7 @@ namespace cg {
                     matrix::Dense<_type>* cos_prev, matrix::Dense<_type>* cos, \
                     matrix::Dense<_type>* sin_prev, matrix::Dense<_type>* sin, \
                     matrix::Dense<_type>* eta_next, matrix::Dense<_type>* eta, \
-                    Array<stopping_status>* stop_status)
+                    array<stopping_status>* stop_status)
 
 
 #define GKO_DECLARE_MINRES_STEP_1_KERNEL(_type)                            \
@@ -73,7 +73,7 @@ namespace cg {
                 matrix::Dense<_type>* sin_prev, matrix::Dense<_type>* sin, \
                 matrix::Dense<_type>* eta, matrix::Dense<_type>* eta_next, \
                 typename matrix::Dense<_type>::absolute_type* tau,         \
-                const Array<stopping_status>* stop_status)
+                const array<stopping_status>* stop_status)
 
 #define GKO_DECLARE_MINRES_STEP_2_KERNEL(_type)                               \
     void step_2(std::shared_ptr<const DefaultExecutor> exec,                  \
@@ -84,7 +84,7 @@ namespace cg {
                 matrix::Dense<_type>* alpha, matrix::Dense<_type>* beta,      \
                 matrix::Dense<_type>* gamma, matrix::Dense<_type>* delta,     \
                 matrix::Dense<_type>* cos, matrix::Dense<_type>* eta,         \
-                const Array<stopping_status>* stop_status)
+                const array<stopping_status>* stop_status)
 
 
 #define GKO_DECLARE_ALL_AS_TEMPLATES                 \

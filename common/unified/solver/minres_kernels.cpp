@@ -74,7 +74,7 @@ void initialize(
     matrix::Dense<ValueType>* cos_prev, matrix::Dense<ValueType>* cos,
     matrix::Dense<ValueType>* sin_prev, matrix::Dense<ValueType>* sin,
     matrix::Dense<ValueType>* eta_next, matrix::Dense<ValueType>* eta,
-    Array<stopping_status>* stop_status)
+    array<stopping_status>* stop_status)
 {
     run_kernel(
         exec,
@@ -137,7 +137,7 @@ void step_1(std::shared_ptr<const DefaultExecutor> exec,
             matrix::Dense<ValueType>* sin_prev, matrix::Dense<ValueType>* sin,
             matrix::Dense<ValueType>* eta, matrix::Dense<ValueType>* eta_next,
             typename matrix::Dense<ValueType>::absolute_type* tau,
-            const Array<stopping_status>* stop_status)
+            const array<stopping_status>* stop_status)
 {
     run_kernel(
         exec,
@@ -183,7 +183,7 @@ void step_2(std::shared_ptr<const DefaultExecutor> exec,
             matrix::Dense<ValueType>* beta, matrix::Dense<ValueType>* gamma,
             matrix::Dense<ValueType>* delta, matrix::Dense<ValueType>* cos,
             matrix::Dense<ValueType>* eta,
-            const Array<stopping_status>* stop_status)
+            const array<stopping_status>* stop_status)
 {
     run_kernel_solver(
         exec,

@@ -49,7 +49,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "core/solver/minres_kernels.hpp"
 #include "core/test/utils.hpp"
-#include "core/test/utils/matrix_utils.hpp"
+#include "core/utils/matrix_utils.hpp"
 #include "test/utils/executor.hpp"
 
 namespace {
@@ -80,14 +80,19 @@ protected:
     }
 
     std::unique_ptr<Mtx> gen_mtx(gko::size_type num_rows,
-                                 gko::size_type num_cols, gko::size_type stride)
+                                 gko::size_type num_cols, gko::size_type stride,
+                                 bool make_hermitian)
     {
-        auto tmp_mtx = gko::test::generate_random_matrix<Mtx>(
+        auto tmp_mtx = gko::test::generate_random_matrix_data<value_type , gko::int32>(
             num_rows, num_cols,
             std::uniform_int_distribution<>(num_cols, num_cols),
-            std::normal_distribution<value_type>(-1.0, 1.0), rand_engine, ref);
+            std::normal_distribution<value_type>(-1.0, 1.0), rand_engine);
+        if (make_hermitian) {
+            gko::utils::make_unit_diagonal(tmp_mtx);
+            gko::utils::make_hermitian(tmp_mtx);
+        }
         auto result = Mtx::create(ref, gko::dim<2>{num_rows, num_cols}, stride);
-        result->copy_from(tmp_mtx.get());
+        result->read(tmp_mtx);
         return result;
     }
 
@@ -96,31 +101,31 @@ protected:
         gko::size_type m = 597;
         gko::size_type n = 43;
         // all vectors need the same stride as b, except x
-        b = gen_mtx(m, n, n + 2);
-        r = gen_mtx(m, n, n + 2);
-        z = gen_mtx(m, n, n + 2);
-        z_tilde = gen_mtx(m, n, n + 2);
-        p = gen_mtx(m, n, n + 2);
-        p_prev = gen_mtx(m, n, n + 2);
-        q = gen_mtx(m, n, n + 2);
-        q_prev = gen_mtx(m, n, n + 2);
-        v = gen_mtx(m, n, n + 2);
-        x = gen_mtx(m, n, n + 3);
-        alpha = gen_mtx(1, n, n);
-        beta = gen_mtx(1, n, n)->compute_absolute();
-        gamma = gen_mtx(1, n, n);
-        delta = gen_mtx(1, n, n);
-        cos_prev = gen_mtx(1, n, n);
-        cos = gen_mtx(1, n, n);
-        sin_prev = gen_mtx(1, n, n);
-        sin = gen_mtx(1, n, n);
-        eta_next = gen_mtx(1, n, n);
-        eta = gen_mtx(1, n, n);
-        tau = gen_mtx(1, n, n)->compute_absolute();
+        b = gen_mtx(m, n, n + 2, false);
+        r = gen_mtx(m, n, n + 2, false);
+        z = gen_mtx(m, n, n + 2, false);
+        z_tilde = gen_mtx(m, n, n + 2, false);
+        p = gen_mtx(m, n, n + 2, false);
+        p_prev = gen_mtx(m, n, n + 2, false);
+        q = gen_mtx(m, n, n + 2, false);
+        q_prev = gen_mtx(m, n, n + 2, false);
+        v = gen_mtx(m, n, n + 2, false);
+        x = gen_mtx(m, n, n + 3, false);
+        alpha = gen_mtx(1, n, n, false);
+        beta = gen_mtx(1, n, n, false)->compute_absolute();
+        gamma = gen_mtx(1, n, n, false);
+        delta = gen_mtx(1, n, n, false);
+        cos_prev = gen_mtx(1, n, n, false);
+        cos = gen_mtx(1, n, n, false);
+        sin_prev = gen_mtx(1, n, n, false);
+        sin = gen_mtx(1, n, n, false);
+        eta_next = gen_mtx(1, n, n, false);
+        eta = gen_mtx(1, n, n, false);
+        tau = gen_mtx(1, n, n, false)->compute_absolute();
         // check correct handling for zero values
         beta->at(2) = gko::zero<value_type>();
         stop_status =
-            std::make_unique<gko::Array<gko::stopping_status>>(ref, n);
+            std::make_unique<gko::array<gko::stopping_status>>(ref, n);
         for (size_t i = 0; i < stop_status->get_num_elems(); ++i) {
             stop_status->get_data()[i].reset();
         }
@@ -148,7 +153,7 @@ protected:
         d_cos = gko::clone(exec, cos);
         d_sin_prev = gko::clone(exec, sin_prev);
         d_sin = gko::clone(exec, sin);
-        d_stop_status = std::make_unique<gko::Array<gko::stopping_status>>(
+        d_stop_status = std::make_unique<gko::array<gko::stopping_status>>(
             exec, *stop_status);
     }
 
@@ -203,8 +208,8 @@ protected:
     std::unique_ptr<Mtx> d_sin_prev;
     std::unique_ptr<Mtx> d_sin;
 
-    std::unique_ptr<gko::Array<gko::stopping_status>> stop_status;
-    std::unique_ptr<gko::Array<gko::stopping_status>> d_stop_status;
+    std::unique_ptr<gko::array<gko::stopping_status>> stop_status;
+    std::unique_ptr<gko::array<gko::stopping_status>> d_stop_status;
 };
 
 
@@ -296,10 +301,9 @@ TEST_F(Minres, MinresStep2IsEquivalentToStep2)
 
 TEST_F(Minres, ApplyIsEquivalentToRef)
 {
-    auto mtx = gen_mtx(50, 50, 53);
-    gko::test::make_hermitian(mtx.get());
-    auto x = gen_mtx(50, 1, 5);
-    auto b = gen_mtx(50, 1, 4);
+    auto mtx = gen_mtx(50, 50, 53, true);
+    auto x = gen_mtx(50, 1, 5, false);
+    auto b = gen_mtx(50, 1, 4, false);
     auto d_mtx = gko::clone(exec, mtx);
     auto d_x = gko::clone(exec, x);
     auto d_b = gko::clone(exec, b);
@@ -331,11 +335,9 @@ TEST_F(Minres, ApplyIsEquivalentToRef)
 
 TEST_F(Minres, PreconditionedApplyIsEquivalentToRef)
 {
-
-    auto mtx = gen_mtx(50, 50, 53);
-    gko::test::make_hpd(mtx.get());
-    auto x = gen_mtx(50, 1, 5);
-    auto b = gen_mtx(50, 1, 4);
+    auto mtx = gen_mtx(50, 50, 53, true);
+    auto x = gen_mtx(50, 1, 5, false);
+    auto b = gen_mtx(50, 1, 4, false);
     auto d_mtx = gko::clone(exec, mtx);
     auto d_x = gko::clone(exec, x);
     auto d_b = gko::clone(exec, b);

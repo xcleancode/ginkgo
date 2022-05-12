@@ -64,7 +64,7 @@ std::unique_ptr<LinOp> Minres<ValueType>::transpose() const
     return build()
         .with_generated_preconditioner(
             share(as<Transposable>(this->get_preconditioner())->transpose()))
-        .with_criteria(this->stop_criterion_factory_)
+        .with_criteria(this->get_stop_criterion_factory())
         .on(this->get_executor())
         ->generate(
             share(as<Transposable>(this->get_system_matrix())->transpose()));
@@ -77,7 +77,7 @@ std::unique_ptr<LinOp> Minres<ValueType>::conj_transpose() const
     return build()
         .with_generated_preconditioner(share(
             as<Transposable>(this->get_preconditioner())->conj_transpose()))
-        .with_criteria(this->stop_criterion_factory_)
+        .with_criteria(this->get_stop_criterion_factory())
         .on(this->get_executor())
         ->generate(share(
             as<Transposable>(this->get_system_matrix())->conj_transpose()));
@@ -157,21 +157,22 @@ void Minres<ValueType>::apply_dense_impl(
     auto sin = Vector::create_with_config_of(alpha.get());
 
     bool one_changed{};
-    Array<stopping_status> stop_status(alpha->get_executor(),
+    array<stopping_status> stop_status(alpha->get_executor(),
                                        dense_b->get_size()[1]);
 
     // r = dense_b
     r = gko::clone(dense_b);
-    system_matrix_->apply(neg_one_op.get(), dense_x, one_op.get(), r.get());
-    auto stop_criterion = stop_criterion_factory_->generate(
-        system_matrix_,
+    this->get_system_matrix()->apply(neg_one_op.get(), dense_x, one_op.get(),
+                                     r.get());
+    auto stop_criterion = this->get_stop_criterion_factory()->generate(
+        this->get_system_matrix(),
         std::shared_ptr<const LinOp>(dense_b, [](const LinOp*) {}), dense_x,
         r.get());
 
     // z = M^-1 * r
     // beta = <r, z>
     // tau = ||z||_2
-    get_preconditioner()->apply(r.get(), z.get());
+    this->get_preconditioner()->apply(r.get(), z.get());
     r->compute_conj_dot(z.get(), beta.get());
     z->compute_norm2(tau.get());
 
@@ -214,10 +215,11 @@ void Minres<ValueType>::apply_dense_impl(
         // v = v - alpha * q
         // z_tilde = M * v
         // beta = <v, z_tilde>
-        system_matrix_->apply(one_op.get(), z.get(), neg_one_op.get(), v.get());
+        this->get_system_matrix()->apply(one_op.get(), z.get(),
+                                         neg_one_op.get(), v.get());
         v->compute_conj_dot(z.get(), alpha.get());
         v->sub_scaled(alpha.get(), q.get());
-        get_preconditioner()->apply(v.get(), z_tilde.get());
+        this->get_preconditioner()->apply(v.get(), z_tilde.get());
         v->compute_conj_dot(z_tilde.get(), beta.get());
 
         // Updates scalars (row vectors)

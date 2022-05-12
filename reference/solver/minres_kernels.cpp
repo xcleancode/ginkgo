@@ -61,7 +61,7 @@ void initialize(
     matrix::Dense<ValueType>* cos_prev, matrix::Dense<ValueType>* cos,
     matrix::Dense<ValueType>* sin_prev, matrix::Dense<ValueType>* sin,
     matrix::Dense<ValueType>* eta_next, matrix::Dense<ValueType>* eta,
-    Array<stopping_status>* stop_status)
+    array<stopping_status>* stop_status)
 {
     for (size_type j = 0; j < r->get_size()[1]; ++j) {
         delta->at(j) = gamma->at(j) = cos_prev->at(j) = sin_prev->at(j) =
@@ -110,7 +110,7 @@ void step_1(std::shared_ptr<const DefaultExecutor> exec,
             matrix::Dense<ValueType>* sin_prev, matrix::Dense<ValueType>* sin,
             matrix::Dense<ValueType>* eta, matrix::Dense<ValueType>* eta_next,
             typename matrix::Dense<ValueType>::absolute_type* tau,
-            const Array<stopping_status>* stop_status)
+            const array<stopping_status>* stop_status)
 {
     for (size_type j = 0; j < alpha->get_size()[1]; ++j) {
         if (stop_status->get_const_data()[j].has_stopped()) {
@@ -149,7 +149,7 @@ void step_2(std::shared_ptr<const DefaultExecutor> exec,
             matrix::Dense<ValueType>* beta, matrix::Dense<ValueType>* gamma,
             matrix::Dense<ValueType>* delta, matrix::Dense<ValueType>* cos,
             matrix::Dense<ValueType>* eta,
-            const Array<stopping_status>* stop_status)
+            const array<stopping_status>* stop_status)
 {
     for (size_type i = 0; i < x->get_size()[0]; ++i) {
         for (size_type j = 0; j < x->get_size()[1]; ++j) {
