@@ -76,15 +76,16 @@ namespace cg {
                 const array<stopping_status>* stop_status)
 
 #define GKO_DECLARE_MINRES_STEP_2_KERNEL(_type)                               \
-    void step_2(std::shared_ptr<const DefaultExecutor> exec,                  \
-                matrix::Dense<_type>* x, matrix::Dense<_type>* p,             \
-                matrix::Dense<_type>* p_prev, matrix::Dense<_type>* z,        \
-                const matrix::Dense<_type>* z_tilde, matrix::Dense<_type>* q, \
-                matrix::Dense<_type>* q_prev, matrix::Dense<_type>* v,        \
-                matrix::Dense<_type>* alpha, matrix::Dense<_type>* beta,      \
-                matrix::Dense<_type>* gamma, matrix::Dense<_type>* delta,     \
-                matrix::Dense<_type>* cos, matrix::Dense<_type>* eta,         \
-                const array<stopping_status>* stop_status)
+    void step_2(                                                              \
+        std::shared_ptr<const DefaultExecutor> exec, matrix::Dense<_type>* x, \
+        matrix::Dense<_type>* p, const matrix::Dense<_type>* p_prev,          \
+        matrix::Dense<_type>* z, const matrix::Dense<_type>* z_tilde,         \
+        matrix::Dense<_type>* q, matrix::Dense<_type>* q_prev,                \
+        matrix::Dense<_type>* v, const matrix::Dense<_type>* alpha,           \
+        const matrix::Dense<_type>* beta, const matrix::Dense<_type>* gamma,  \
+        const matrix::Dense<_type>* delta, const matrix::Dense<_type>* cos,   \
+        const matrix::Dense<_type>* eta,                                      \
+        const array<stopping_status>* stop_status)
 
 
 #define GKO_DECLARE_ALL_AS_TEMPLATES                 \

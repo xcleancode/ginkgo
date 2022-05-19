@@ -70,13 +70,12 @@ DEFINE_bool(
     rel_residual, false,
     "Use relative residual instead of residual reduction stopping criterion");
 
-DEFINE_string(
-    solvers, "cg",
-    "A comma-separated list of solvers to run. "
-    "Supported values are: bicgstab, bicg, cb_gmres_keep, "
-    "cb_gmres_reduce1, cb_gmres_reduce2, cb_gmres_integer, "
-    "cb_gmres_ireduce1, cb_gmres_ireduce2, cg, cgs, fcg, minres, gmres, idr, "
-    "lower_trs, upper_trs, overhead");
+DEFINE_string(solvers, "cg",
+              "A comma-separated list of solvers to run. "
+              "Supported values are: bicgstab, bicg, cb_gmres_keep, "
+              "cb_gmres_reduce1, cb_gmres_reduce2, cb_gmres_integer, "
+              "cb_gmres_ireduce1, cb_gmres_ireduce2, cg, cgs, fcg, gmres, idr, "
+              "lower_trs, minres, upper_trs, overhead");
 
 DEFINE_uint32(
     nrhs, 1,

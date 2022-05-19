@@ -55,6 +55,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ginkgo/core/solver/idr.hpp>
 #include <ginkgo/core/solver/ir.hpp>
 #include <ginkgo/core/solver/lower_trs.hpp>
+#include <ginkgo/core/solver/minres.hpp>
 #include <ginkgo/core/solver/upper_trs.hpp>
 
 
@@ -351,6 +352,9 @@ struct UpperTrs : SimpleSolverTest<gko::solver::UpperTrs<solver_value_type>> {
 
     static constexpr bool logs_iteration_complete() { return false; }
 };
+
+
+struct Minres : SimpleSolverTest<gko::solver::Minres<solver_value_type>> {};
 
 
 template <typename ObjectType>
@@ -689,7 +693,7 @@ using SolverTypes =
                      /* "IDR uses different initialization approaches even when
                         deterministic", Idr<1>, Idr<4>,*/
                      Ir, CbGmres<2>, CbGmres<10>, Gmres<2>, Gmres<10>, LowerTrs,
-                     UpperTrs>;
+                     UpperTrs, Minres>;
 
 TYPED_TEST_SUITE(Solver, SolverTypes, TypenameNameGenerator);
 

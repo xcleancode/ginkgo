@@ -249,7 +249,7 @@ TEST_F(Minres, MinresInitializeIsEquivalentToRef)
 }
 
 
-TEST_F(Minres, MinresStep1IsEquivalentToStep1)
+TEST_F(Minres, MinresStep1IsEquivalentToRef)
 {
     initialize_data();
 
@@ -276,7 +276,7 @@ TEST_F(Minres, MinresStep1IsEquivalentToStep1)
 }
 
 
-TEST_F(Minres, MinresStep2IsEquivalentToStep2)
+TEST_F(Minres, MinresStep2IsEquivalentToRef)
 {
     initialize_data();
 

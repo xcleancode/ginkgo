@@ -142,13 +142,15 @@ GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE(GKO_DECLARE_MINRES_STEP_1_KERNEL);
 template <typename ValueType>
 void step_2(std::shared_ptr<const DefaultExecutor> exec,
             matrix::Dense<ValueType>* x, matrix::Dense<ValueType>* p,
-            matrix::Dense<ValueType>* p_prev, matrix::Dense<ValueType>* z,
+            const matrix::Dense<ValueType>* p_prev, matrix::Dense<ValueType>* z,
             const matrix::Dense<ValueType>* z_tilde,
             matrix::Dense<ValueType>* q, matrix::Dense<ValueType>* q_prev,
-            matrix::Dense<ValueType>* v, matrix::Dense<ValueType>* alpha,
-            matrix::Dense<ValueType>* beta, matrix::Dense<ValueType>* gamma,
-            matrix::Dense<ValueType>* delta, matrix::Dense<ValueType>* cos,
-            matrix::Dense<ValueType>* eta,
+            matrix::Dense<ValueType>* v, const matrix::Dense<ValueType>* alpha,
+            const matrix::Dense<ValueType>* beta,
+            const matrix::Dense<ValueType>* gamma,
+            const matrix::Dense<ValueType>* delta,
+            const matrix::Dense<ValueType>* cos,
+            const matrix::Dense<ValueType>* eta,
             const array<stopping_status>* stop_status)
 {
     for (size_type i = 0; i < x->get_size()[0]; ++i) {

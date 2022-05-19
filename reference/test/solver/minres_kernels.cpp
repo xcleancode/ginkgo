@@ -61,7 +61,7 @@ protected:
     Minres()
         : exec(gko::ReferenceExecutor::create()),
           mtx(gko::initialize<Mtx>(
-              {{1, 2, 3, 4}, {2, 5, 6, 7}, {3, 6, 0, 0}, {4, 7, 0, 0}}, exec)),
+              {{1, 2, 3, 4}, {2, -5, 6, 7}, {3, 6, 0, 0}, {4, 7, 0, 0}}, exec)),
           zero(gko::initialize<Mtx>(I<I<value_type>>{{0, 0}, {0, 0}}, exec)),
           zero_scalar(gko::initialize<Mtx>(I<I<value_type>>{{0, 0}}, exec)),
           small_x(gko::clone(zero)),
