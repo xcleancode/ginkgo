@@ -30,6 +30,9 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************<GINKGO LICENSE>*******************************/
 
+#include "core/distributed/matrix_kernels.hpp"
+
+
 #include <algorithm>
 #include <memory>
 
@@ -44,7 +47,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ginkgo/core/matrix/csr.hpp>
 
 
-#include "core/distributed/matrix_kernels.hpp"
 #include "core/test/utils.hpp"
 #include "test/utils/executor.hpp"
 
@@ -69,9 +71,7 @@ protected:
                                            ValueLocalGlobalIndexType())>::type;
     using Mtx = gko::matrix::Csr<value_type, local_index_type>;
 
-    Matrix()
-        : engine(42)
-    {}
+    Matrix() : engine(42) {}
 
     void SetUp()
     {
@@ -129,11 +129,13 @@ protected:
                 diag_col_idxs, diag_values, offdiag_row_idxs, offdiag_col_idxs,
                 offdiag_values, gather_idxs, recv_sizes.get_data(),
                 local_to_global_col);
-            gko::kernels::EXEC_NAMESPACE::distributed_matrix::build_diag_offdiag(
-                exec, d_input, d_row_partition, d_col_partition, part,
-                d_diag_row_idxs, d_diag_col_idxs, d_diag_values,
-                d_offdiag_row_idxs, d_offdiag_col_idxs, d_offdiag_values,
-                d_gather_idxs, d_recv_sizes.get_data(), d_local_to_global_col);
+            gko::kernels::EXEC_NAMESPACE::distributed_matrix::
+                build_diag_offdiag(
+                    exec, d_input, d_row_partition, d_col_partition, part,
+                    d_diag_row_idxs, d_diag_col_idxs, d_diag_values,
+                    d_offdiag_row_idxs, d_offdiag_col_idxs, d_offdiag_values,
+                    d_gather_idxs, d_recv_sizes.get_data(),
+                    d_local_to_global_col);
 
             assert_device_matrix_data_equal(diag_row_idxs, diag_col_idxs,
                                             diag_values, d_diag_row_idxs,
