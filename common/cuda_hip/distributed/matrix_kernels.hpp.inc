@@ -39,11 +39,12 @@ void build_diag_offdiag(
         row_partition,
     const distributed::Partition<LocalIndexType, GlobalIndexType>*
         col_partition,
-    comm_index_type local_part,
-    device_matrix_data<ValueType, LocalIndexType>& diag_data,
-    device_matrix_data<ValueType, LocalIndexType>& offdiag_data,
-    Array<LocalIndexType>& local_gather_idxs, comm_index_type* recv_sizes,
-    Array<GlobalIndexType>& local_to_global_ghost)
+    comm_index_type local_part, array<LocalIndexType>& diag_row_idxs,
+    array<LocalIndexType>& diag_col_idxs, array<ValueType>& diag_values,
+    array<LocalIndexType>& offdiag_row_idxs,
+    array<LocalIndexType>& offdiag_col_idxs, array<ValueType>& offdiag_values,
+    array<LocalIndexType>& local_gather_idxs, comm_index_type* recv_sizes,
+    array<GlobalIndexType>& local_to_global_ghost)
 {
     auto input_row_idxs = input.get_const_row_idxs();
     auto input_col_idxs = input.get_const_col_idxs();
@@ -62,13 +63,13 @@ void build_diag_offdiag(
     const auto num_input_elements = input.get_num_elems();
 
     // precompute the row and column range id of each input element
-    Array<size_type> row_range_ids{exec, num_input_elements};
+    array<size_type> row_range_ids{exec, num_input_elements};
     thrust::upper_bound(thrust::device, row_range_bounds + 1,
                         row_range_bounds + num_row_ranges + 1,
                         input.get_const_row_idxs(),
                         input.get_const_row_idxs() + num_input_elements,
                         row_range_ids.get_data());
-    Array<size_type> col_range_ids{exec, input.get_num_elems()};
+    array<size_type> col_range_ids{exec, input.get_num_elems()};
     thrust::upper_bound(thrust::device, col_range_bounds + 1,
                         col_range_bounds + num_col_ranges + 1,
                         input.get_const_col_idxs(),
@@ -125,9 +126,9 @@ void build_diag_offdiag(
         col_range_ids.get_const_data()));
 
     // copy and transform diag entries into arrays
-    Array<LocalIndexType> diag_row_idxs{exec, num_diag_elements};
-    Array<LocalIndexType> diag_col_idxs{exec, num_diag_elements};
-    Array<ValueType> diag_values{exec, num_diag_elements};
+    diag_row_idxs.resize_and_reset(num_diag_elements);
+    diag_col_idxs.resize_and_reset(num_diag_elements);
+    diag_values.resize_and_reset(num_diag_elements);
     auto local_diag_it = thrust::make_transform_iterator(
         input_it, [map_to_local_row, map_to_local_col] __host__ __device__(
                       const input_type& tuple) {
@@ -153,11 +154,11 @@ void build_diag_offdiag(
     // copy and transform offdiag entries into arrays. this keeps global column
     // indices, and also stores the column part id for each offdiag entry in an
     // array
-    Array<LocalIndexType> offdiag_row_idxs{exec, num_offdiag_elements};
-    Array<GlobalIndexType> offdiag_global_col_idxs{exec, num_offdiag_elements};
-    Array<ValueType> offdiag_values{exec, num_offdiag_elements};
-    Array<comm_index_type> offdiag_col_part_ids{exec, num_offdiag_elements};
-    Array<size_type> offdiag_col_range_ids{exec, num_offdiag_elements};
+    offdiag_row_idxs.resize_and_reset(num_offdiag_elements);
+    offdiag_values.resize_and_reset(num_offdiag_elements);
+    array<GlobalIndexType> offdiag_global_col_idxs{exec, num_offdiag_elements};
+    array<comm_index_type> offdiag_col_part_ids{exec, num_offdiag_elements};
+    array<size_type> offdiag_col_range_ids{exec, num_offdiag_elements};
     auto local_offdiag_it = thrust::make_transform_iterator(
         input_it, [map_to_local_row, map_to_local_col,
                    col_part_ids] __host__ __device__(const input_type& tuple) {
@@ -185,7 +186,7 @@ void build_diag_offdiag(
     // their part-id and global columns
     // the previous `offdiag_global_col_idxs` is not modify to
     // keep it consistent with the offdiag row and values array
-    Array<GlobalIndexType> sorted_offdiag_global_col_idxs{
+    array<GlobalIndexType> sorted_offdiag_global_col_idxs{
         exec, offdiag_global_col_idxs};
     auto key_it = thrust::make_zip_iterator(
         thrust::make_tuple(offdiag_col_part_ids.get_data(),
@@ -216,7 +217,7 @@ void build_diag_offdiag(
     // global column indices and their new local index again by the global
     // column index. Then I'm using binary searches to find the new local column
     // index.
-    Array<LocalIndexType> permutation{exec, num_offdiag_cols};
+    array<LocalIndexType> permutation{exec, num_offdiag_cols};
     thrust::sequence(thrust::device, permutation.get_data(),
                      permutation.get_data() + num_offdiag_cols);
     thrust::sort_by_key(
@@ -226,8 +227,8 @@ void build_diag_offdiag(
             offdiag_col_part_ids.get_data(), permutation.get_data())));
 
     // 4. map column index of offdiag entries to new columns
-    Array<LocalIndexType> offdiag_col_idxs{exec, num_offdiag_elements};
-    Array<size_type> lower_bounds{exec, num_offdiag_elements};
+    offdiag_col_idxs.resize_and_reset(num_offdiag_elements);
+    array<size_type> lower_bounds{exec, num_offdiag_elements};
     // I have to precompute the lower bounds because the calling binary
     // searches from the device does not work:
     // https://github.com/NVIDIA/thrust/issues/1415
@@ -264,20 +265,6 @@ void build_diag_offdiag(
                        [recv_sizes] __device__(const size_type part) {
                            atomic_add(recv_sizes + part, 1);
                        });
-
-    const auto num_diag_rows =
-        static_cast<size_type>(row_partition->get_part_size(local_part));
-    const auto num_diag_cols =
-        static_cast<size_type>(col_partition->get_part_size(local_part));
-    diag_data = std::move(device_matrix_data<ValueType, LocalIndexType>(
-        exec, gko::dim<2>{num_diag_rows, num_diag_cols},
-        std::move(diag_row_idxs), std::move(diag_col_idxs),
-        std::move(diag_values)));
-
-    offdiag_data = std::move(device_matrix_data<ValueType, LocalIndexType>(
-        exec, gko::dim<2>{num_diag_rows, num_offdiag_cols},
-        std::move(offdiag_row_idxs), std::move(offdiag_col_idxs),
-        std::move(offdiag_values)));
 }
 
 GKO_INSTANTIATE_FOR_EACH_VALUE_AND_LOCAL_GLOBAL_INDEX_TYPE(
