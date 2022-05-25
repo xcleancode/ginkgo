@@ -38,6 +38,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <sstream>
 #include <string>
 #include <type_traits>
+#include <utility>
 
 
 #include <ginkgo/config.hpp>
@@ -483,6 +484,13 @@ public:
      * @return  if the two comm objects are not equal
      */
     bool operator!=(const communicator& rhs) const { return !(*this == rhs); }
+
+    std::shared_ptr<const Executor> get_executor() const { return exec_; }
+
+    void set_executor(std::shared_ptr<const Executor> exec)
+    {
+        exec_ = std::move(exec);
+    }
 
     /**
      * This function is used to synchronize the ranks in the communicator.
@@ -1460,7 +1468,8 @@ public:
      *
      * @param other the window object to be moved.
      */
-    window(window&& other) : window_{std::exchange(other.window_, MPI_WIN_NULL)}
+    window(window&& other) noexcept
+        : window_{std::exchange(other.window_, MPI_WIN_NULL)}
     {}
 
     /**
@@ -1469,7 +1478,7 @@ public:
      *
      * @param other the window object to be moved.
      */
-    window& operator=(window&& other)
+    window& operator=(window&& other) noexcept
     {
         window_ = std::exchange(other.window_, MPI_WIN_NULL);
     }
