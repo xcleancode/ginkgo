@@ -104,15 +104,13 @@ public:
 
     Matrix()
         : ref(gko::ReferenceExecutor::create()),
-          exec(),
-          comm(MPI_COMM_WORLD, ref),
           size{53, 53},
           num_rhs(11),
           logger(gko::share(HostToDeviceLogger::create(exec))),
           engine()
     {
-        init_executor(ref, exec, comm);
-        comm = gko::mpi::communicator(comm.get(), exec);
+        init_executor(ref, exec);
+        comm = gko::mpi::communicator(MPI_COMM_WORLD, exec);
         exec->add_logger(logger);
 
         mat = dist_mtx_type::create(ref, comm);
@@ -146,6 +144,12 @@ public:
         generate_scalar_pair(beta, dbeta);
     }
 
+    void TearDown() override
+    {
+        if (exec != nullptr) {
+            ASSERT_NO_THROW(exec->synchronize());
+        }
+    }
 
     void generate_matrix_pair(std::unique_ptr<dist_mtx_type>& host,
                               std::unique_ptr<dist_mtx_type>& device)
@@ -158,7 +162,6 @@ public:
         host->read_distributed(md, part.get());
         device = gko::clone(exec, host);
     }
-
 
     void generate_vector_pair(std::unique_ptr<dist_vec_type>& host,
                               std::unique_ptr<dist_vec_type>& device)
