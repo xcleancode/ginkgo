@@ -103,26 +103,25 @@ protected:
             gko::array<value_type> d_offdiag_values{exec};
             gko::array<local_index_type> gather_idxs{ref};
             gko::array<local_index_type> d_gather_idxs{exec};
-            gko::array<comm_index_type> recv_offsets{
-                ref, static_cast<gko::size_type>(
-                         row_partition->get_num_parts() + 1)};
-            gko::array<comm_index_type> d_recv_offsets{
-                exec, static_cast<gko::size_type>(
-                          row_partition->get_num_parts() + 1)};
+            gko::array<comm_index_type> recv_sizes{
+                ref,
+                static_cast<gko::size_type>(row_partition->get_num_parts())};
+            gko::array<comm_index_type> d_recv_sizes{
+                exec,
+                static_cast<gko::size_type>(row_partition->get_num_parts())};
             gko::array<global_index_type> local_to_global_col{ref};
             gko::array<global_index_type> d_local_to_global_col{exec};
 
             gko::kernels::reference::distributed_matrix::build_diag_offdiag(
                 ref, input, row_partition, col_partition, part, diag_row_idxs,
                 diag_col_idxs, diag_values, offdiag_row_idxs, offdiag_col_idxs,
-                offdiag_values, gather_idxs, recv_offsets.get_data(),
+                offdiag_values, gather_idxs, recv_sizes.get_data(),
                 local_to_global_col);
             gko::kernels::omp::distributed_matrix::build_diag_offdiag(
                 exec, d_input, d_row_partition, d_col_partition, part,
                 d_diag_row_idxs, d_diag_col_idxs, d_diag_values,
                 d_offdiag_row_idxs, d_offdiag_col_idxs, d_offdiag_values,
-                d_gather_idxs, d_recv_offsets.get_data(),
-                d_local_to_global_col);
+                d_gather_idxs, d_recv_sizes.get_data(), d_local_to_global_col);
 
             assert_device_matrix_data_equal(diag_row_idxs, diag_col_idxs,
                                             diag_values, d_diag_row_idxs,
@@ -131,7 +130,7 @@ protected:
                 offdiag_row_idxs, offdiag_col_idxs, offdiag_values,
                 d_offdiag_row_idxs, d_offdiag_col_idxs, d_offdiag_values);
             GKO_ASSERT_ARRAY_EQ(gather_idxs, d_gather_idxs);
-            GKO_ASSERT_ARRAY_EQ(recv_offsets, d_recv_offsets);
+            GKO_ASSERT_ARRAY_EQ(recv_sizes, d_recv_sizes);
             GKO_ASSERT_ARRAY_EQ(local_to_global_col, d_local_to_global_col);
         }
     }
