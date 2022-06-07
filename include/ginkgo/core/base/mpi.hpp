@@ -46,6 +46,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ginkgo/core/base/polymorphic_object.hpp>
 #include <ginkgo/core/base/types.hpp>
 #include <ginkgo/core/base/utils_helper.hpp>
+#include <ginkgo/core/log/logger.hpp>
 
 
 #if GINKGO_BUILD_MPI
@@ -179,6 +180,9 @@ private:
 };
 
 
+class request;
+
+
 namespace {
 
 
@@ -196,6 +200,9 @@ public:
         delete comm;
     }
 };
+
+
+using partial_logger = std::function<void(const request*)>;
 
 
 }  // namespace
@@ -249,7 +256,9 @@ public:
      * The default constructor. It creates a null MPI_Request of
      * MPI_REQUEST_NULL type.
      */
-    request() : req_(MPI_REQUEST_NULL) {}
+    explicit request(partial_logger logger = [](const request*) {})
+        : req_(MPI_REQUEST_NULL), partial_logger_(std::move(logger))
+    {}
 
     /**
      * Get a pointer to the underlying MPI_Request handle.
@@ -268,12 +277,14 @@ public:
     {
         status status;
         GKO_ASSERT_NO_MPI_ERRORS(MPI_Wait(&req_, status.get()));
+        partial_logger_(this);
         return status;
     }
 
 
 private:
     MPI_Request req_;
+    partial_logger partial_logger_;
 };
 
 
@@ -299,7 +310,7 @@ inline std::vector<status> wait_all(std::vector<request>& req)
  * for our purposes. As the class or object goes out of scope, the communicator
  * is freed.
  */
-class communicator {
+class communicator : public log::EnableLogging<communicator> {
 public:
     /**
      * Non-owning constructor for an existing communicator of type MPI_Comm. The
@@ -411,9 +422,20 @@ public:
     void send(const SendType* send_buffer, const int send_count,
               const int destination_rank, const int send_tag) const
     {
-        GKO_ASSERT_NO_MPI_ERRORS(
-            MPI_Send(send_buffer, send_count, type_impl<SendType>::get_type(),
-                     destination_rank, send_tag, this->get()));
+        auto type = type_impl<SendType>::get_type();
+        this->template log<
+            log::Logger::blocking_mpi_point_to_point_communication_started>(
+            "send", comm_.get(), reinterpret_cast<uintptr>(send_buffer),
+            send_count, type, log::Logger::unspecified_mpi_rank,
+            destination_rank, send_tag, nullptr);
+        GKO_ASSERT_NO_MPI_ERRORS(MPI_Send(send_buffer, send_count, type,
+                                          destination_rank, send_tag,
+                                          this->get()));
+        this->template log<
+            log::Logger::blocking_mpi_point_to_point_communication_completed>(
+            "send", comm_.get(), reinterpret_cast<uintptr>(send_buffer),
+            send_count, type, this->rank(), destination_rank, send_tag,
+            nullptr);
     }
 
     /**
@@ -431,7 +453,20 @@ public:
     request i_send(const SendType* send_buffer, const int send_count,
                    const int destination_rank, const int send_tag) const
     {
-        request req;
+        auto type = type_impl<SendType>::get_type();
+        request req([&](const request* req) {
+            this->template log<
+                log::Logger::
+                    non_blocking_mpi_point_to_point_communication_completed>(
+                "send", comm_.get(), reinterpret_cast<uintptr>(send_buffer),
+                send_count, type, this->rank(), destination_rank, send_tag,
+                req);
+        });
+        this->template log<
+            log::Logger::non_blocking_mpi_point_to_point_communication_started>(
+            "send", comm_.get(), reinterpret_cast<uintptr>(send_buffer),
+            send_count, type, this->rank(), destination_rank, send_tag,
+            nullptr);
         GKO_ASSERT_NO_MPI_ERRORS(
             MPI_Isend(send_buffer, send_count, type_impl<SendType>::get_type(),
                       destination_rank, send_tag, this->get(), req.get()));
@@ -453,6 +488,12 @@ public:
                 const int source_rank, const int recv_tag) const
     {
         status st;
+        auto type = type_impl<RecvType>::get_type();
+        this->template log<
+            log::Logger::blocking_mpi_point_to_point_communication_started>(
+            "send", comm_.get(), reinterpret_cast<uintptr>(recv_buffer),
+            recv_count, type, source_rank, log::Logger::unspecified_mpi_rank,
+            recv_tag, nullptr);
         GKO_ASSERT_NO_MPI_ERRORS(
             MPI_Recv(recv_buffer, recv_count, type_impl<RecvType>::get_type(),
                      source_rank, recv_tag, this->get(), st.get()));
@@ -490,9 +531,14 @@ public:
     template <typename BroadcastType>
     void broadcast(BroadcastType* buffer, int count, int root_rank) const
     {
-        GKO_ASSERT_NO_MPI_ERRORS(MPI_Bcast(buffer, count,
-                                           type_impl<BroadcastType>::get_type(),
-                                           root_rank, this->get()));
+        auto type = type_impl<BroadcastType>::get_type();
+        this->template log<
+            log::Logger::blocking_mpi_collective_communication_started>(
+            "broadcast", comm_.get(), reinterpret_cast<uintptr>(buffer), count,
+            nullptr, nullptr, type, reinterpret_cast<uintptr>(buffer), count,
+            nullptr, nullptr, type, root_rank, nullptr);
+        GKO_ASSERT_NO_MPI_ERRORS(
+            MPI_Bcast(buffer, count, type, root_rank, this->get()));
     }
 
     /**
@@ -874,10 +920,23 @@ public:
     template <typename RecvType>
     void all_to_all(RecvType* recv_buffer, const int recv_count) const
     {
+        auto type = type_impl<RecvType>::get_type();
+        this->template log<
+            log::Logger::blocking_mpi_collective_communication_started>(
+            "all_to_all", comm_.get(), reinterpret_cast<uintptr>(recv_buffer),
+            recv_count, nullptr, nullptr, type,
+            reinterpret_cast<uintptr>(recv_buffer), recv_count, nullptr,
+            nullptr, type, log::Logger::unspecified_mpi_rank, nullptr);
         GKO_ASSERT_NO_MPI_ERRORS(MPI_Alltoall(
             in_place<RecvType>(), recv_count, type_impl<RecvType>::get_type(),
             recv_buffer, recv_count, type_impl<RecvType>::get_type(),
             this->get()));
+        this->template log<
+            log::Logger::blocking_mpi_collective_communication_completed>(
+            "all_to_all", comm_.get(), reinterpret_cast<uintptr>(recv_buffer),
+            recv_count, nullptr, nullptr, type,
+            reinterpret_cast<uintptr>(recv_buffer), recv_count, nullptr,
+            nullptr, type, log::Logger::unspecified_mpi_rank, nullptr);
     }
 
     /**
@@ -963,6 +1022,13 @@ public:
                       const int* send_offsets, RecvType* recv_buffer,
                       const int* recv_counts, const int* recv_offsets) const
     {
+        auto type = type_impl<SendType>::get_type();
+        this->template log<
+            log::Logger::blocking_mpi_collective_communication_started>(
+            "all_to_all_v", comm_.get(), reinterpret_cast<uintptr>(send_buffer),
+            0, send_counts, send_buffer, type,
+            reinterpret_cast<uintptr>(recv_buffer), 0, recv_counts,
+            recv_offsets, type, log::Logger::unspecified_mpi_rank, nullptr);
         GKO_ASSERT_NO_MPI_ERRORS(MPI_Alltoallv(
             send_buffer, send_counts, send_offsets,
             type_impl<SendType>::get_type(), recv_buffer, recv_counts,
@@ -1010,6 +1076,11 @@ public:
     void scan(const ScanType* send_buffer, ScanType* recv_buffer, int count,
               MPI_Op operation) const
     {
+        auto type = type_impl<ScanType>::get_type();
+        this->template log<log::Logger::blocking_mpi_reduction_started>(
+            "scan", comm_.get(), reinterpret_cast<uintptr>(send_buffer),
+            reinterpret_cast<uintptr>(recv_buffer), count, type, operation,
+            log::Logger::unspecified_mpi_rank, nullptr);
         GKO_ASSERT_NO_MPI_ERRORS(MPI_Scan(send_buffer, recv_buffer, count,
                                           type_impl<ScanType>::get_type(),
                                           operation, this->get()));
@@ -1017,7 +1088,7 @@ public:
 
     /**
      * Does a scan operation with the given operator.
-     * (MPI_Scan). See MPI documentation for more details.
+     * (MPI_Iscan). See MPI documentation for more details.
      *
      * @param send_buffer  the buffer to scan from
      * @param recv_buffer  the result buffer
