@@ -201,6 +201,13 @@ if(PAPI_sde_FOUND)
     set(GINKGO_HAVE_PAPI_SDE 1)
 endif()
 
+# Automatically find TAU
+set(GINKGO_HAVE_TAU 0)
+find_package(PerfStubs QUIET)
+if(PerfStubs_FOUND)
+    set(GINKGO_HAVE_TAU 1)
+endif()
+
 # Switch off HWLOC for Windows and MacOS
 if(GINKGO_BUILD_HWLOC AND (MSVC OR WIN32 OR CYGWIN OR APPLE))
     set(GINKGO_BUILD_HWLOC OFF CACHE BOOL "Build Ginkgo with HWLOC. Default is OFF. Ginkgo does not support HWLOC on Windows/MacOS" FORCE)

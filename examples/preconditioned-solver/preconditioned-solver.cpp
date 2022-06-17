@@ -40,8 +40,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string>
 
 
+#define PERFSTUBS_USE_TIMERS
+#include "perfstubs_api/timer.h"
+
+
 int main(int argc, char* argv[])
 {
+    PERFSTUBS_INITIALIZE();
     // Some shortcuts
     using ValueType = double;
     using RealValueType = gko::remove_complex<ValueType>;
@@ -86,6 +91,7 @@ int main(int argc, char* argv[])
 
     // executor where Ginkgo will perform the computation
     const auto exec = exec_map.at(executor_string)();  // throws if not valid
+    exec->add_logger(gko::log::Tau::create(exec));
 
     // Read data
     auto A = share(gko::read<mtx>(std::ifstream("data/A.mtx"), exec));
@@ -97,10 +103,7 @@ int main(int argc, char* argv[])
     auto solver_gen =
         cg::build()
             .with_criteria(
-                gko::stop::Iteration::build().with_max_iters(20u).on(exec),
-                gko::stop::ResidualNorm<ValueType>::build()
-                    .with_reduction_factor(reduction_factor)
-                    .on(exec))
+                gko::stop::Iteration::build().with_max_iters(10000u).on(exec))
             // Add preconditioner, these 2 lines are the only
             // difference from the simple solver example
             .with_preconditioner(bj::build().with_max_block_size(8u).on(exec))

@@ -658,10 +658,38 @@ public:
 
     void clear_loggers() override { loggers_.clear(); }
 
+private:
+    template <typename OtherLoggable, typename OtherBase>
+    friend class EnableLogging;
+
+    template <size_type Event, typename ConcreteLoggableT, typename = void>
+    struct propagate_log_helper {
+        template <typename... Args>
+        static void propagate_log(const ConcreteLoggableT*, Args&&...)
+        {}
+    };
+
+    template <size_type Event, typename ConcreteLoggableT>
+    struct propagate_log_helper<
+        Event, ConcreteLoggableT,
+        xstd::void_t<decltype(
+            std::declval<ConcreteLoggableT>().get_executor())>> {
+        template <typename... Args>
+        static void propagate_log(const ConcreteLoggableT* loggable,
+                                  Args&&... args)
+        {
+            loggable->get_executor()->template log<Event>(
+                std::forward<Args>(args)...);
+        }
+    };
+
 protected:
     template <size_type Event, typename... Params>
     void log(Params&&... params) const
     {
+        propagate_log_helper<Event, ConcreteLoggable>::propagate_log(
+            static_cast<const ConcreteLoggable*>(this),
+            std::forward<Params>(params)...);
         for (auto& logger : loggers_) {
             logger->template on<Event>(std::forward<Params>(params)...);
         }
