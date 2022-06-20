@@ -93,8 +93,7 @@ protected:
     using dist_vec_type = gko::distributed::Vector<value_type>;
 
     MatrixBuilder()
-        : ref(gko::ReferenceExecutor::create()),
-          comm(gko::mpi::communicator(MPI_COMM_WORLD))
+        : ref(gko::ReferenceExecutor::create()), comm(MPI_COMM_WORLD, ref)
     {}
 
     void SetUp() override { ASSERT_EQ(comm.size(), 3); }
@@ -305,7 +304,7 @@ protected:
     Matrix()
         : ref(gko::ReferenceExecutor::create()),
           size{5, 5},
-          comm(gko::mpi::communicator(MPI_COMM_WORLD)),
+          comm(MPI_COMM_WORLD, ref),
           row_part{Partition::build_from_contiguous(
               ref, gko::array<global_index_type>(
                        ref, I<global_index_type>{0, 2, 4, 5}))},
