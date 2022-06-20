@@ -62,7 +62,7 @@ void build_diag_offdiag(
     array<LocalIndexType>& diag_col_idxs, array<ValueType>& diag_values,
     array<LocalIndexType>& offdiag_row_idxs,
     array<LocalIndexType>& offdiag_col_idxs, array<ValueType>& offdiag_values,
-    array<LocalIndexType>& local_gather_idxs, comm_index_type* recv_offsets,
+    array<LocalIndexType>& local_gather_idxs, comm_index_type* recv_sizes,
     array<GlobalIndexType>& local_to_global_ghost)
 {
     using partition_type =
@@ -78,8 +78,8 @@ void build_diag_offdiag(
     auto num_parts = row_partition->get_num_parts();
     size_type row_range_id_hint = 0;
     size_type col_range_id_hint = 0;
-    // zero recv_offsets values
-    std::fill_n(recv_offsets, num_parts + 1, comm_index_type{});
+    // zero recv_sizes values
+    std::fill_n(recv_sizes, num_parts, comm_index_type{});
 
     auto find_range = [](GlobalIndexType idx, const partition_type* partition,
                          size_type hint) {
@@ -206,23 +206,23 @@ void build_diag_offdiag(
     // count off-diagonal columns per part
     for (const auto& entry : offdiag_cols) {
         auto col_range_id = entry.second;
-        recv_offsets[col_part_ids[col_range_id]]++;
+        recv_sizes[col_part_ids[col_range_id]]++;
     }
-    components::prefix_sum(exec, recv_offsets, num_parts + 1);
+    const auto num_ghost_elems =
+        std::accumulate(recv_sizes, recv_sizes + num_parts, size_type{});
+    components::prefix_sum(exec, recv_sizes, num_parts);
 
     // collect and renumber offdiagonal columns
-    const auto num_ghost_elems =
-        static_cast<size_type>(recv_offsets[num_parts]);
     local_gather_idxs.resize_and_reset(num_ghost_elems);
     std::unordered_map<GlobalIndexType, LocalIndexType> offdiag_global_to_local;
     for (const auto& entry : offdiag_cols) {
         auto range = entry.second;
         auto part = col_part_ids[range];
-        auto idx = recv_offsets[part];
+        auto idx = recv_sizes[part];
         local_gather_idxs.get_data()[idx] =
             map_to_local(entry.first, col_partition, entry.second);
         offdiag_global_to_local[entry.first] = idx;
-        ++recv_offsets[part];
+        ++recv_sizes[part];
     }
 
     // build local-to-global map for offdiag columns
@@ -236,10 +236,10 @@ void build_diag_offdiag(
         local_to_global_ghost.get_data()[local_idx] = global_idx;
     }
 
-    // shift recv_offsets to the back, insert 0 in front again
-    LocalIndexType local_prev{};
-    for (size_type i = 0; i <= num_parts; i++) {
-        recv_offsets[i] = std::exchange(local_prev, recv_offsets[i]);
+    // shift recv_sizes to the back, insert 0 in front again
+    LocalIndexType local_prev = num_parts ? recv_sizes[0] : 0;
+    for (size_type i = num_parts - 1; i > 0; --i) {
+        recv_sizes[i] -= recv_sizes[i - 1];
     }
 
     // map off-diag values to local column indices

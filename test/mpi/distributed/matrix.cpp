@@ -89,6 +89,141 @@ private:
 };
 
 
+#ifndef GKO_COMPILING_DPCPP
+
+
+template <typename ValueLocalGlobalIndexType>
+class MatrixCreation : public ::testing::Test {
+protected:
+    using value_type = typename std::tuple_element<
+        0, decltype(ValueLocalGlobalIndexType())>::type;
+    using local_index_type = typename std::tuple_element<
+        1, decltype(ValueLocalGlobalIndexType())>::type;
+    using global_index_type = typename std::tuple_element<
+        2, decltype(ValueLocalGlobalIndexType())>::type;
+    using dist_mtx_type = gko::distributed::Matrix<value_type, local_index_type,
+                                                   global_index_type>;
+    using dist_vec_type = gko::distributed::Vector<value_type>;
+    using Partition =
+        gko::distributed::Partition<local_index_type, global_index_type>;
+    using matrix_data = gko::matrix_data<value_type, global_index_type>;
+
+
+    MatrixCreation()
+        : ref(gko::ReferenceExecutor::create()),
+          size{5, 5},
+          comm(gko::mpi::communicator(MPI_COMM_WORLD)),
+          mat_input{size,
+                    {{0, 1, 1},
+                     {0, 3, 2},
+                     {1, 1, 3},
+                     {1, 2, 4},
+                     {2, 1, 5},
+                     {2, 2, 6},
+                     {3, 3, 8},
+                     {3, 4, 7},
+                     {4, 0, 9},
+                     {4, 4, 10}}},
+          dist_input{{{size, {{0, 1, 1}, {0, 3, 2}, {1, 1, 3}, {1, 2, 4}}},
+                      {size, {{2, 1, 5}, {2, 2, 6}, {3, 3, 8}, {3, 4, 7}}},
+                      {size, {{4, 0, 9}, {4, 4, 10}}}}},
+          engine(42)
+    {
+        init_executor(ref, exec, comm);
+
+
+        row_part = Partition::build_from_contiguous(
+            exec, gko::array<global_index_type>(
+                      exec, I<global_index_type>{0, 2, 4, 5}));
+        col_part = Partition::build_from_mapping(
+            exec,
+            gko::array<gko::distributed::comm_index_type>(
+                exec, I<gko::distributed::comm_index_type>{1, 1, 2, 0, 0}),
+            3);
+
+        dist_mat = dist_mtx_type::create(exec, comm);
+    }
+
+    void SetUp() override { ASSERT_EQ(comm.size(), 3); }
+
+
+    std::shared_ptr<gko::ReferenceExecutor> ref;
+    std::shared_ptr<gko::EXEC_TYPE> exec;
+    gko::dim<2> size;
+    gko::mpi::communicator comm;
+    std::shared_ptr<Partition> row_part;
+    std::shared_ptr<Partition> col_part;
+
+    gko::matrix_data<value_type, global_index_type> mat_input;
+    std::array<matrix_data, 3> dist_input;
+
+    std::unique_ptr<dist_mtx_type> dist_mat;
+
+    std::default_random_engine engine;
+};
+
+TYPED_TEST_SUITE(MatrixCreation, gko::test::ValueLocalGlobalIndexTypes);
+
+
+TYPED_TEST(MatrixCreation, ReadsDistributedGlobalData)
+{
+    using value_type = typename TestFixture::value_type;
+    using csr = typename TestFixture::dist_mtx_type::local_matrix_type;
+    I<I<value_type>> res_diag[] = {{{0, 1}, {0, 3}}, {{6, 0}, {0, 8}}, {{10}}};
+    I<I<value_type>> res_offdiag[] = {
+        {{0, 2}, {4, 0}}, {{5, 0}, {0, 7}}, {{9}}};
+    auto rank = this->dist_mat->get_communicator().rank();
+
+    this->dist_mat->read_distributed(this->mat_input, this->row_part.get());
+
+    GKO_ASSERT_MTX_NEAR(gko::as<csr>(this->dist_mat->get_const_local_diag()),
+                        res_diag[rank], 0);
+    GKO_ASSERT_MTX_NEAR(gko::as<csr>(this->dist_mat->get_const_local_offdiag()),
+                        res_offdiag[rank], 0);
+}
+
+
+TYPED_TEST(MatrixCreation, ReadsDistributedLocalData)
+{
+    using value_type = typename TestFixture::value_type;
+    using csr = typename TestFixture::dist_mtx_type::local_matrix_type;
+    I<I<value_type>> res_diag[] = {{{0, 1}, {0, 3}}, {{6, 0}, {0, 8}}, {{10}}};
+    I<I<value_type>> res_offdiag[] = {
+        {{0, 2}, {4, 0}}, {{5, 0}, {0, 7}}, {{9}}};
+    auto rank = this->dist_mat->get_communicator().rank();
+
+    this->dist_mat->read_distributed(this->dist_input[rank],
+                                     this->row_part.get());
+
+    GKO_ASSERT_MTX_NEAR(gko::as<csr>(this->dist_mat->get_const_local_diag()),
+                        res_diag[rank], 0);
+    GKO_ASSERT_MTX_NEAR(gko::as<csr>(this->dist_mat->get_const_local_offdiag()),
+                        res_offdiag[rank], 0);
+}
+
+
+TYPED_TEST(MatrixCreation, ReadsDistributedWithColPartition)
+{
+    using value_type = typename TestFixture::value_type;
+    using csr = typename TestFixture::dist_mtx_type::local_matrix_type;
+    I<I<value_type>> res_diag[] = {{{2, 0}, {0, 0}}, {{0, 5}, {0, 0}}, {{0}}};
+    I<I<value_type>> res_offdiag[] = {
+        {{1, 0}, {3, 4}}, {{0, 0, 6}, {8, 7, 0}}, {{10, 9}}};
+    auto rank = this->dist_mat->get_communicator().rank();
+
+    this->dist_mat->read_distributed(this->mat_input, this->row_part.get(),
+                                     this->col_part.get());
+
+    GKO_ASSERT_MTX_NEAR(gko::as<csr>(this->dist_mat->get_const_local_diag()),
+                        res_diag[rank], 0);
+    GKO_ASSERT_MTX_NEAR(gko::as<csr>(this->dist_mat->get_const_local_offdiag()),
+                        res_offdiag[rank], 0);
+}
+
+
+#endif
+
+
 class Matrix : public ::testing::Test {
 public:
     using value_type = float;
