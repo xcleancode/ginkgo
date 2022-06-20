@@ -112,7 +112,6 @@ protected:
     MatrixCreation()
         : ref(gko::ReferenceExecutor::create()),
           size{5, 5},
-          comm(gko::mpi::communicator(MPI_COMM_WORLD)),
           mat_input{size,
                     {{0, 1, 1},
                      {0, 3, 2},
@@ -129,8 +128,8 @@ protected:
                       {size, {{4, 0, 9}, {4, 4, 10}}}}},
           engine(42)
     {
-        init_executor(ref, exec, comm);
-
+        init_executor(ref, exec);
+        comm = gko::mpi::communicator(MPI_COMM_WORLD, exec);
 
         row_part = Partition::build_from_contiguous(
             exec, gko::array<global_index_type>(

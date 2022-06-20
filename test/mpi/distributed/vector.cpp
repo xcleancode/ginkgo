@@ -114,7 +114,7 @@ public:
           md{{0, 1}, {2, 3}, {4, 5}, {6, 7}, {8, 9}, {10, 11}},
           md_localized{{{0, 1}, {2, 3}}, {{4, 5}, {6, 7}}, {{8, 9}, {10, 11}}}
     {
-        init_executor(gko::ReferenceExecutor::create(), exec, comm);
+        init_executor(ref, exec);
         comm = gko::mpi::communicator(MPI_COMM_WORLD, exec);
         size = gko::dim<2>{local_size[1] * comm.size(), 11};
     }
@@ -128,7 +128,7 @@ public:
         }
     }
 
-    std::shared_ptr<gko::Executor> ref;
+    std::shared_ptr<gko::ReferenceExecutor> ref;
     std::shared_ptr<gko::EXEC_TYPE> exec;
     gko::mpi::communicator comm;
     std::shared_ptr<part_type> part;

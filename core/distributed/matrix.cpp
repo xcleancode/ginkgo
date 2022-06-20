@@ -202,9 +202,8 @@ void Matrix<ValueType, LocalIndexType, GlobalIndexType>::read_distributed(
         ->read(offdiag_data);
 
     // exchange step 1: determine recv_sizes, send_sizes, send_offsets
-    exec->get_master()->copy_from(exec.get(), num_parts + 1,
-                                  recv_sizes_array.get_data(),
-                                  recv_sizes_.data());
+    exec->get_master()->copy_from(
+        exec.get(), num_parts, recv_sizes_array.get_data(), recv_sizes_.data());
     std::partial_sum(recv_sizes_.begin(), recv_sizes_.end(),
                      recv_offsets_.begin() + 1);
     comm.all_to_all(recv_sizes_.data(), 1, send_sizes_.data(), 1);
