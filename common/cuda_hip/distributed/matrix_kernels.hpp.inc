@@ -247,7 +247,7 @@ void build_diag_offdiag(
             return permutation_data[lower_bound];
         });
 
-    // 5. compute gather idxs and recv_offsets
+    // 5. compute gather idxs and recv_sizes
     local_gather_idxs.resize_and_reset(num_offdiag_cols);
     auto transform_it = thrust::make_zip_iterator(thrust::make_tuple(
         local_to_global_ghost.get_data(), offdiag_col_range_ids.get_data()));
