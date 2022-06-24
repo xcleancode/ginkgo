@@ -354,6 +354,11 @@ public:
         return offdiag_mtx_;
     }
 
+    const GlobalIndexType* get_ghost_to_global_map() const
+    {
+        return local_to_global_ghost_.get_const_data();
+    }
+
     /**
      * Copy constructs a Matrix.
      * @param other  Matrix to copy from.
