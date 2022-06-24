@@ -109,7 +109,7 @@ repartitioner<LocalIndexType, GlobalIndexType>::repartitioner(
     : from_partition_(std::move(from_partition)),
       to_partition_(std::move(to_partition)),
       from_comm_(from_comm),
-      to_comm_(from_comm),
+      to_comm_(),
       to_has_data_(false)
 {
     auto host_from_partition = gko::clone(
@@ -128,8 +128,9 @@ repartitioner<LocalIndexType, GlobalIndexType>::repartitioner(
     to_has_data_ = rank < new_n_parts;
 
     if (new_n_parts < old_n_parts) {
-        to_comm_ = mpi::communicator(from_comm_.get(), to_has_data_,
-                                     from_comm_.rank());
+        to_comm_ =
+            mpi::communicator(from_comm_.get(), to_has_data_, from_comm_.rank(),
+                              to_partition_->get_executor());
     } else {
         to_comm_ = from_comm_;
     }
