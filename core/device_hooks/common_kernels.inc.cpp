@@ -67,6 +67,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "core/preconditioner/isai_kernels.hpp"
 #include "core/preconditioner/jacobi_kernels.hpp"
 #include "core/reorder/rcm_kernels.hpp"
+#include "core/solver/async_richardson_kernels.hpp"
 #include "core/solver/bicg_kernels.hpp"
 #include "core/solver/bicgstab_kernels.hpp"
 #include "core/solver/cb_gmres_kernels.hpp"
@@ -313,6 +314,15 @@ GKO_STUB_VALUE_AND_INDEX_TYPE(GKO_DECLARE_DIAGONAL_FILL_IN_MATRIX_DATA_KERNEL);
 
 
 }  // namespace diagonal
+
+
+namespace async_richardson {
+
+
+GKO_STUB_VALUE_AND_INDEX_TYPE(GKO_DECLARE_ASYNC_RICHARDSON_APPLY_KERNEL);
+
+
+}  // namespace async_richardson
 
 
 namespace cg {
