@@ -43,9 +43,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <gtest/gtest.h>
 
 
-#include <ginkgo/core/base/mpi.hpp>
-
-
 void init_executor(std::shared_ptr<gko::ReferenceExecutor> ref,
                    std::shared_ptr<gko::ReferenceExecutor>& exec)
 {
@@ -64,10 +61,7 @@ void init_executor(std::shared_ptr<gko::ReferenceExecutor> ref,
                    std::shared_ptr<gko::CudaExecutor>& exec)
 {
     ASSERT_GT(gko::CudaExecutor::get_num_devices(), 0);
-    exec = gko::CudaExecutor::create(
-        gko::mpi::map_rank_to_device_id(MPI_COMM_WORLD,
-                                        gko::CudaExecutor::get_num_devices()),
-        ref);
+    exec = gko::CudaExecutor::create(0, ref);
 }
 
 
@@ -75,10 +69,7 @@ void init_executor(std::shared_ptr<gko::ReferenceExecutor> ref,
                    std::shared_ptr<gko::HipExecutor>& exec)
 {
     ASSERT_GT(gko::HipExecutor::get_num_devices(), 0);
-    exec = gko::HipExecutor::create(
-        gko::mpi::map_rank_to_device_id(MPI_COMM_WORLD,
-                                        gko::HipExecutor::get_num_devices()),
-        ref);
+    exec = gko::HipExecutor::create(0, ref);
 }
 
 
@@ -88,13 +79,9 @@ void init_executor(std::shared_ptr<gko::ReferenceExecutor> ref,
     auto num_gpu_devices = gko::DpcppExecutor::get_num_devices("gpu");
     auto num_cpu_devices = gko::DpcppExecutor::get_num_devices("cpu");
     if (num_gpu_devices > 0) {
-        exec = gko::DpcppExecutor::create(
-            gko::mpi::map_rank_to_device_id(MPI_COMM_WORLD, num_gpu_devices),
-            ref, "gpu");
+        exec = gko::DpcppExecutor::create(0, ref, "gpu");
     } else if (num_cpu_devices > 0) {
-        exec = gko::DpcppExecutor::create(
-            gko::mpi::map_rank_to_device_id(MPI_COMM_WORLD, num_cpu_devices),
-            ref, "cpu");
+        exec = gko::DpcppExecutor::create(0, ref, "cpu");
     } else {
         FAIL() << "No suitable DPC++ devices";
     }
