@@ -44,7 +44,7 @@ void build_local(
     const auto* part_ids = partition->get_part_ids();
     const auto num_ranges = partition->get_num_ranges();
 
-    Array<size_type> range_id{exec, input.get_num_elems()};
+    array<size_type> range_id{exec, input.get_num_elems()};
     thrust::upper_bound(thrust::device, range_bounds + 1,
                         range_bounds + num_ranges + 1,
                         input.get_const_row_idxs(),
