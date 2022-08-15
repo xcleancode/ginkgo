@@ -28,7 +28,8 @@ set(EXAMPLES_LIST
     par-ilu-convergence
     performance-debugging
     preconditioner-export
-    simple-solver-logging)
+    simple-solver-logging
+    richardson)
 
 if(GINKGO_BUILD_CUDA AND GINKGO_BUILD_OMP)
     list(APPEND EXAMPLES_LIST custom-matrix-format)
