@@ -762,12 +762,28 @@ TYPED_TEST(Dense, ConvertsToBccooElm32)
 
     this->mtx4->convert_to(bccoo_mtx_elm.get());
 
+    auto rows_data = bccoo_mtx_elm->get_const_rows();
+    auto offsets_data = bccoo_mtx_elm->get_const_offsets();
     auto chunk_data = bccoo_mtx_elm->get_const_chunk();
     gko::size_type block_size = bccoo_mtx_elm->get_block_size();
     gko::int32 ind = {};
 
     ASSERT_EQ(bccoo_mtx_elm->get_size(), gko::dim<2>(2, 3));
     ASSERT_EQ(bccoo_mtx_elm->get_num_stored_elements(), 4);
+
+    gko::int32 row = {};
+    gko::int32 offset = {};
+    for (gko::int32 i = 0; i < bccoo_mtx_elm->get_num_blocks(); i++) {
+        EXPECT_EQ(rows_data[i], row);
+        EXPECT_EQ(offsets_data[i], offset);
+        auto elms = std::min(block_size, 4 - i * block_size);
+        row += ((block_size == 1) && (i == 2)) || (block_size == 3);
+        offset +=
+            (1 + sizeof(T)) * elms +
+            (((block_size == 2) || (block_size >= 4)) && (i + block_size > 2));
+    }
+    EXPECT_EQ(offsets_data[bccoo_mtx_elm->get_num_blocks()], offset);
+
     EXPECT_EQ(chunk_data[ind], 0x00);
     ind++;
     EXPECT_EQ(gko::get_value_chunk<T>(chunk_data, ind), T{1.0});
@@ -809,6 +825,10 @@ TYPED_TEST(Dense, ConvertsToBccooBlk32)
 
     this->mtx4->convert_to(bccoo_mtx_blk.get());
 
+    auto rows_data = bccoo_mtx_blk->get_const_rows();
+    auto cols_data = bccoo_mtx_blk->get_const_cols();
+    auto types_data = bccoo_mtx_blk->get_const_types();
+    auto offsets_data = bccoo_mtx_blk->get_const_offsets();
     auto chunk_data = bccoo_mtx_blk->get_const_chunk();
     gko::size_type block_size = bccoo_mtx_blk->get_block_size();
     gko::int32 ind = {};
@@ -816,36 +836,49 @@ TYPED_TEST(Dense, ConvertsToBccooBlk32)
     ASSERT_EQ(bccoo_mtx_blk->get_size(), gko::dim<2>(2, 3));
     ASSERT_EQ(bccoo_mtx_blk->get_num_stored_elements(), 4);
 
+    gko::int32 row = {};
+    gko::int32 col = {};
+    gko::uint8 type = ((block_size >= 4) ? 3 : 2);
+    gko::int32 offset = {};
+    for (gko::int32 i = 0; i < bccoo_mtx_blk->get_num_blocks(); i++) {
+        auto elms = std::min(block_size, 4 - i * block_size);
+        row = ((i > 0) && (i + block_size) == 4) ? 1 : 0;
+        col = i % 3 + i / 3;
+        type =
+            (((block_size == 2) || (block_size >= 4)) && (i + block_size > 2))
+                ? 3
+                : 2;
+        EXPECT_EQ(rows_data[i], row);
+        EXPECT_EQ(cols_data[i], col);
+        EXPECT_EQ(types_data[i], type);
+        EXPECT_EQ(offsets_data[i], offset);
+        offset +=
+            (1 + sizeof(T)) * elms +
+            (((block_size == 2) || (block_size >= 4)) && (i + block_size > 2)) *
+                elms;
+    }
+
     switch (block_size) {
     case 1:
-        //	std::cout << ind << std::endl;
         EXPECT_EQ(chunk_data[ind], 0x00);
         ind++;
-        //	std::cout << ind << std::endl;
         EXPECT_EQ(gko::get_value_chunk<T>(chunk_data, ind), T{1.0});
         ind += sizeof(T);
-        //	std::cout << ind << std::endl;
 
         EXPECT_EQ(chunk_data[ind], 0x00);
         ind++;
-        //	std::cout << ind << std::endl;
         EXPECT_EQ(gko::get_value_chunk<T>(chunk_data, ind), T{3.0});
         ind += sizeof(T);
-        //	std::cout << ind << std::endl;
 
         EXPECT_EQ(chunk_data[ind], 0x00);
         ind++;
-        //	std::cout << ind << std::endl;
         EXPECT_EQ(gko::get_value_chunk<T>(chunk_data, ind), T{2.0});
         ind += sizeof(T);
-        //	std::cout << ind << std::endl;
 
         EXPECT_EQ(chunk_data[ind], 0x00);
         ind++;
-        //	std::cout << ind << std::endl;
         EXPECT_EQ(gko::get_value_chunk<T>(chunk_data, ind), T{5.0});
         ind += sizeof(T);
-        //	std::cout << ind << std::endl;
 
         break;
     case 2:
@@ -939,12 +972,28 @@ TYPED_TEST(Dense, MovesToBccooElm32)
 
     this->mtx4->move_to(bccoo_mtx_elm.get());
 
+    auto rows_data = bccoo_mtx_elm->get_const_rows();
+    auto offsets_data = bccoo_mtx_elm->get_const_offsets();
     auto chunk_data = bccoo_mtx_elm->get_const_chunk();
     gko::size_type block_size = bccoo_mtx_elm->get_block_size();
     gko::int32 ind = {};
 
     ASSERT_EQ(bccoo_mtx_elm->get_size(), gko::dim<2>(2, 3));
     ASSERT_EQ(bccoo_mtx_elm->get_num_stored_elements(), 4);
+
+    gko::int32 row = {};
+    gko::int32 offset = {};
+    for (gko::int32 i = 0; i < bccoo_mtx_elm->get_num_blocks(); i++) {
+        EXPECT_EQ(rows_data[i], row);
+        EXPECT_EQ(offsets_data[i], offset);
+        auto elms = std::min(block_size, 4 - i * block_size);
+        row += ((block_size == 1) && (i == 2)) || (block_size == 3);
+        offset +=
+            (1 + sizeof(T)) * elms +
+            (((block_size == 2) || (block_size >= 4)) && (i + block_size > 2));
+    }
+    EXPECT_EQ(offsets_data[bccoo_mtx_elm->get_num_blocks()], offset);
+
     EXPECT_EQ(chunk_data[ind], 0x00);
     ind++;
     EXPECT_EQ(gko::get_value_chunk<T>(chunk_data, ind), T{1.0});
@@ -986,6 +1035,10 @@ TYPED_TEST(Dense, MovesToBccooBlk32)
 
     this->mtx4->move_to(bccoo_mtx_blk.get());
 
+    auto rows_data = bccoo_mtx_blk->get_const_rows();
+    auto cols_data = bccoo_mtx_blk->get_const_cols();
+    auto types_data = bccoo_mtx_blk->get_const_types();
+    auto offsets_data = bccoo_mtx_blk->get_const_offsets();
     auto chunk_data = bccoo_mtx_blk->get_const_chunk();
     gko::size_type block_size = bccoo_mtx_blk->get_block_size();
     gko::int32 ind = {};
@@ -993,36 +1046,49 @@ TYPED_TEST(Dense, MovesToBccooBlk32)
     ASSERT_EQ(bccoo_mtx_blk->get_size(), gko::dim<2>(2, 3));
     ASSERT_EQ(bccoo_mtx_blk->get_num_stored_elements(), 4);
 
+    gko::int32 row = {};
+    gko::int32 col = {};
+    gko::uint8 type = ((block_size >= 4) ? 3 : 2);
+    gko::int32 offset = {};
+    for (gko::int32 i = 0; i < bccoo_mtx_blk->get_num_blocks(); i++) {
+        auto elms = std::min(block_size, 4 - i * block_size);
+        row = ((i > 0) && (i + block_size) == 4) ? 1 : 0;
+        col = i % 3 + i / 3;
+        type =
+            (((block_size == 2) || (block_size >= 4)) && (i + block_size > 2))
+                ? 3
+                : 2;
+        EXPECT_EQ(rows_data[i], row);
+        EXPECT_EQ(cols_data[i], col);
+        EXPECT_EQ(types_data[i], type);
+        EXPECT_EQ(offsets_data[i], offset);
+        offset +=
+            (1 + sizeof(T)) * elms +
+            (((block_size == 2) || (block_size >= 4)) && (i + block_size > 2)) *
+                elms;
+    }
+
     switch (block_size) {
     case 1:
-        //	std::cout << ind << std::endl;
         EXPECT_EQ(chunk_data[ind], 0x00);
         ind++;
-        //	std::cout << ind << std::endl;
         EXPECT_EQ(gko::get_value_chunk<T>(chunk_data, ind), T{1.0});
         ind += sizeof(T);
-        //	std::cout << ind << std::endl;
 
         EXPECT_EQ(chunk_data[ind], 0x00);
         ind++;
-        //	std::cout << ind << std::endl;
         EXPECT_EQ(gko::get_value_chunk<T>(chunk_data, ind), T{3.0});
         ind += sizeof(T);
-        //	std::cout << ind << std::endl;
 
         EXPECT_EQ(chunk_data[ind], 0x00);
         ind++;
-        //	std::cout << ind << std::endl;
         EXPECT_EQ(gko::get_value_chunk<T>(chunk_data, ind), T{2.0});
         ind += sizeof(T);
-        //	std::cout << ind << std::endl;
 
         EXPECT_EQ(chunk_data[ind], 0x00);
         ind++;
-        //	std::cout << ind << std::endl;
         EXPECT_EQ(gko::get_value_chunk<T>(chunk_data, ind), T{5.0});
         ind += sizeof(T);
-        //	std::cout << ind << std::endl;
 
         break;
     case 2:
@@ -1116,12 +1182,28 @@ TYPED_TEST(Dense, ConvertsToBccooElm64)
 
     this->mtx4->convert_to(bccoo_mtx_elm.get());
 
+    auto rows_data = bccoo_mtx_elm->get_const_rows();
+    auto offsets_data = bccoo_mtx_elm->get_const_offsets();
     auto chunk_data = bccoo_mtx_elm->get_const_chunk();
     gko::size_type block_size = bccoo_mtx_elm->get_block_size();
     gko::int64 ind = {};
 
     ASSERT_EQ(bccoo_mtx_elm->get_size(), gko::dim<2>(2, 3));
     ASSERT_EQ(bccoo_mtx_elm->get_num_stored_elements(), 4);
+
+    gko::int64 row = {};
+    gko::int64 offset = {};
+    for (gko::int64 i = 0; i < bccoo_mtx_elm->get_num_blocks(); i++) {
+        EXPECT_EQ(rows_data[i], row);
+        EXPECT_EQ(offsets_data[i], offset);
+        auto elms = std::min(block_size, 4 - i * block_size);
+        row += ((block_size == 1) && (i == 2)) || (block_size == 3);
+        offset +=
+            (1 + sizeof(T)) * elms +
+            (((block_size == 2) || (block_size >= 4)) && (i + block_size > 2));
+    }
+    EXPECT_EQ(offsets_data[bccoo_mtx_elm->get_num_blocks()], offset);
+
     EXPECT_EQ(chunk_data[ind], 0x00);
     ind++;
     EXPECT_EQ(gko::get_value_chunk<T>(chunk_data, ind), T{1.0});
@@ -1163,6 +1245,10 @@ TYPED_TEST(Dense, ConvertsToBccooBlk64)
 
     this->mtx4->convert_to(bccoo_mtx_blk.get());
 
+    auto rows_data = bccoo_mtx_blk->get_const_rows();
+    auto cols_data = bccoo_mtx_blk->get_const_cols();
+    auto types_data = bccoo_mtx_blk->get_const_types();
+    auto offsets_data = bccoo_mtx_blk->get_const_offsets();
     auto chunk_data = bccoo_mtx_blk->get_const_chunk();
     gko::size_type block_size = bccoo_mtx_blk->get_block_size();
     gko::int64 ind = {};
@@ -1170,36 +1256,49 @@ TYPED_TEST(Dense, ConvertsToBccooBlk64)
     ASSERT_EQ(bccoo_mtx_blk->get_size(), gko::dim<2>(2, 3));
     ASSERT_EQ(bccoo_mtx_blk->get_num_stored_elements(), 4);
 
+    gko::int64 row = {};
+    gko::int64 col = {};
+    gko::uint8 type = ((block_size >= 4) ? 3 : 2);
+    gko::int64 offset = {};
+    for (gko::int64 i = 0; i < bccoo_mtx_blk->get_num_blocks(); i++) {
+        auto elms = std::min(block_size, 4 - i * block_size);
+        row = ((i > 0) && (i + block_size) == 4) ? 1 : 0;
+        col = i % 3 + i / 3;
+        type =
+            (((block_size == 2) || (block_size >= 4)) && (i + block_size > 2))
+                ? 3
+                : 2;
+        EXPECT_EQ(rows_data[i], row);
+        EXPECT_EQ(cols_data[i], col);
+        EXPECT_EQ(types_data[i], type);
+        EXPECT_EQ(offsets_data[i], offset);
+        offset +=
+            (1 + sizeof(T)) * elms +
+            (((block_size == 2) || (block_size >= 4)) && (i + block_size > 2)) *
+                elms;
+    }
+
     switch (block_size) {
     case 1:
-        //	std::cout << ind << std::endl;
         EXPECT_EQ(chunk_data[ind], 0x00);
         ind++;
-        //	std::cout << ind << std::endl;
         EXPECT_EQ(gko::get_value_chunk<T>(chunk_data, ind), T{1.0});
         ind += sizeof(T);
-        //	std::cout << ind << std::endl;
 
         EXPECT_EQ(chunk_data[ind], 0x00);
         ind++;
-        //	std::cout << ind << std::endl;
         EXPECT_EQ(gko::get_value_chunk<T>(chunk_data, ind), T{3.0});
         ind += sizeof(T);
-        //	std::cout << ind << std::endl;
 
         EXPECT_EQ(chunk_data[ind], 0x00);
         ind++;
-        //	std::cout << ind << std::endl;
         EXPECT_EQ(gko::get_value_chunk<T>(chunk_data, ind), T{2.0});
         ind += sizeof(T);
-        //	std::cout << ind << std::endl;
 
         EXPECT_EQ(chunk_data[ind], 0x00);
         ind++;
-        //	std::cout << ind << std::endl;
         EXPECT_EQ(gko::get_value_chunk<T>(chunk_data, ind), T{5.0});
         ind += sizeof(T);
-        //	std::cout << ind << std::endl;
 
         break;
     case 2:
@@ -1293,12 +1392,29 @@ TYPED_TEST(Dense, MovesToBccooElm64)
 
     this->mtx4->move_to(bccoo_mtx_elm.get());
 
+    auto rows_data = bccoo_mtx_elm->get_const_rows();
+    auto offsets_data = bccoo_mtx_elm->get_const_offsets();
     auto chunk_data = bccoo_mtx_elm->get_const_chunk();
     gko::size_type block_size = bccoo_mtx_elm->get_block_size();
+
     gko::int64 ind = {};
 
     ASSERT_EQ(bccoo_mtx_elm->get_size(), gko::dim<2>(2, 3));
     ASSERT_EQ(bccoo_mtx_elm->get_num_stored_elements(), 4);
+
+    gko::int64 row = {};
+    gko::int64 offset = {};
+    for (gko::int64 i = 0; i < bccoo_mtx_elm->get_num_blocks(); i++) {
+        EXPECT_EQ(rows_data[i], row);
+        EXPECT_EQ(offsets_data[i], offset);
+        auto elms = std::min(block_size, 4 - i * block_size);
+        row += ((block_size == 1) && (i == 2)) || (block_size == 3);
+        offset +=
+            (1 + sizeof(T)) * elms +
+            (((block_size == 2) || (block_size >= 4)) && (i + block_size > 2));
+    }
+    EXPECT_EQ(offsets_data[bccoo_mtx_elm->get_num_blocks()], offset);
+
     EXPECT_EQ(chunk_data[ind], 0x00);
     ind++;
     EXPECT_EQ(gko::get_value_chunk<T>(chunk_data, ind), T{1.0});
@@ -1340,6 +1456,10 @@ TYPED_TEST(Dense, MovesToBccooBlk64)
 
     this->mtx4->move_to(bccoo_mtx_blk.get());
 
+    auto rows_data = bccoo_mtx_blk->get_const_rows();
+    auto cols_data = bccoo_mtx_blk->get_const_cols();
+    auto types_data = bccoo_mtx_blk->get_const_types();
+    auto offsets_data = bccoo_mtx_blk->get_const_offsets();
     auto chunk_data = bccoo_mtx_blk->get_const_chunk();
     gko::size_type block_size = bccoo_mtx_blk->get_block_size();
     gko::int64 ind = {};
@@ -1347,36 +1467,49 @@ TYPED_TEST(Dense, MovesToBccooBlk64)
     ASSERT_EQ(bccoo_mtx_blk->get_size(), gko::dim<2>(2, 3));
     ASSERT_EQ(bccoo_mtx_blk->get_num_stored_elements(), 4);
 
+    gko::int64 row = {};
+    gko::int64 col = {};
+    gko::uint8 type = ((block_size >= 4) ? 3 : 2);
+    gko::int64 offset = {};
+    for (gko::int64 i = 0; i < bccoo_mtx_blk->get_num_blocks(); i++) {
+        auto elms = std::min(block_size, 4 - i * block_size);
+        row = ((i > 0) && (i + block_size) == 4) ? 1 : 0;
+        col = i % 3 + i / 3;
+        type =
+            (((block_size == 2) || (block_size >= 4)) && (i + block_size > 2))
+                ? 3
+                : 2;
+        EXPECT_EQ(rows_data[i], row);
+        EXPECT_EQ(cols_data[i], col);
+        EXPECT_EQ(types_data[i], type);
+        EXPECT_EQ(offsets_data[i], offset);
+        offset +=
+            (1 + sizeof(T)) * elms +
+            (((block_size == 2) || (block_size >= 4)) && (i + block_size > 2)) *
+                elms;
+    }
+
     switch (block_size) {
     case 1:
-        //	std::cout << ind << std::endl;
         EXPECT_EQ(chunk_data[ind], 0x00);
         ind++;
-        //	std::cout << ind << std::endl;
         EXPECT_EQ(gko::get_value_chunk<T>(chunk_data, ind), T{1.0});
         ind += sizeof(T);
-        //	std::cout << ind << std::endl;
 
         EXPECT_EQ(chunk_data[ind], 0x00);
         ind++;
-        //	std::cout << ind << std::endl;
         EXPECT_EQ(gko::get_value_chunk<T>(chunk_data, ind), T{3.0});
         ind += sizeof(T);
-        //	std::cout << ind << std::endl;
 
         EXPECT_EQ(chunk_data[ind], 0x00);
         ind++;
-        //	std::cout << ind << std::endl;
         EXPECT_EQ(gko::get_value_chunk<T>(chunk_data, ind), T{2.0});
         ind += sizeof(T);
-        //	std::cout << ind << std::endl;
 
         EXPECT_EQ(chunk_data[ind], 0x00);
         ind++;
-        //	std::cout << ind << std::endl;
         EXPECT_EQ(gko::get_value_chunk<T>(chunk_data, ind), T{5.0});
         ind += sizeof(T);
-        //	std::cout << ind << std::endl;
 
         break;
     case 2:
