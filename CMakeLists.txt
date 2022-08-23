@@ -220,10 +220,6 @@ if(GINKGO_BUILD_HWLOC)
     find_package(HWLOC 2.1) # No need for QUIET as we ship FindHWLOC
 endif()
 
-if(GINKGO_BUILD_PYTHON_BINDINGS)
-  find_package(pybind11)
-endif()
-
 add_subdirectory(third_party)    # Third-party tools and libraries
 
 if(MSVC)
@@ -313,6 +309,7 @@ endif()
 unset(BASH CACHE)
 
 if(GINKGO_BUILD_PYTHON_BINDINGS)
+  find_package(Python REQUIRED COMPONENTS Interpreter Development)
   find_package(pybind11)
   add_subdirectory(bindings/test)
 endif()
