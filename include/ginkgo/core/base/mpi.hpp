@@ -394,9 +394,18 @@ inline std::vector<status> wait_all(std::vector<request>& req)
 
 
 /**
- * A communicator class that takes in the given communicator and duplicates it
- * for our purposes. As the class or object goes out of scope, the communicator
- * is freed.
+ * A thin wrapper of MPI_Comm that supports most MPI calls.
+ *
+ * A wrapper class that takes in the given MPI communicator. If a bare MPI_Comm
+ * is provided, the wrapper takes no ownership of the MPI_Comm. Thus the
+ * MPI_Comm must remain valid throughout the lifetime of the communicator. If
+ * the communicator was created through splitting, the wrapper takes ownership
+ * of the MPI_Comm. In this case, as the class or object goes out of scope, the
+ * underlying MPI_Comm is freed.
+ *
+ * @note All MPI calls that work on a buffer take in an Executor as an
+ *       additional argument. This argument specifies the memory space the
+ *       buffer lives in.
  */
 class communicator {
 public:
@@ -501,6 +510,7 @@ public:
     /**
      * Send (Blocking) data from calling process to destination rank.
      *
+     * @param exec  The executor, on which the message buffer is located.
      * @param send_buffer  the buffer to send
      * @param send_count  the number of elements to send
      * @param destination_rank  the rank to send the data to
@@ -525,6 +535,7 @@ public:
      * Send (Non-blocking, Immediate return) data from calling process to
      * destination rank.
      *
+     * @param exec  The executor, on which the message buffer is located.
      * @param send_buffer  the buffer to send
      * @param send_count  the number of elements to send
      * @param destination_rank  the rank to send the data to
@@ -550,6 +561,7 @@ public:
      * Send (Non-blocking, Immediate return) data from calling process to
      * destination rank.
      *
+     * @param exec  The executor, on which the message buffer is located.
      * @param send_buffer  the buffer to send
      * @param send_count  the number of elements to send
      * @param send_type  the MPI_Datatype of the elements to send
@@ -574,6 +586,7 @@ public:
     /**
      * Receive data from source rank.
      *
+     * @param exec  The executor, on which the message buffer is located.
      * @param recv_buffer  the buffer to receive
      * @param recv_count  the number of elements to receive
      * @param source_rank  the rank to receive the data from
@@ -601,6 +614,7 @@ public:
     /**
      * Receive (Non-blocking, Immediate return) data from source rank.
      *
+     * @param exec  The executor, on which the message buffer is located.
      * @param recv_buffer  the buffer to send
      * @param recv_count  the number of elements to receive
      * @param source_rank  the rank to receive the data from
@@ -624,6 +638,7 @@ public:
     /**
      * Receive (Non-blocking, Immediate return) data from source rank.
      *
+     * @param exec  The executor, on which the message buffer is located.
      * @param recv_buffer  the buffer to send
      * @param recv_count  the number of elements to receive
      * @param recv_type  the MPI_Datatype of the elements to receive
@@ -647,6 +662,7 @@ public:
     /**
      * Broadcast data from calling process to all ranks in the communicator
      *
+     * @param exec  The executor, on which the message buffer is located.
      * @param buffer  the buffer to broadcsat
      * @param count  the number of elements to broadcast
      * @param root_rank  the rank to broadcast from
@@ -669,6 +685,7 @@ public:
      * (Non-blocking) Broadcast data from calling process to all ranks in the
      * communicator
      *
+     * @param exec  The executor, on which the message buffer is located.
      * @param buffer  the buffer to broadcsat
      * @param count  the number of elements to broadcast
      * @param root_rank  the rank to broadcast from
@@ -695,6 +712,7 @@ public:
      * Reduce data into root from all calling processes on the same
      * communicator.
      *
+     * @param exec  The executor, on which the message buffer is located.
      * @param send_buffer  the buffer to reduce
      * @param recv_buffer  the reduced result
      * @param count  the number of elements to reduce
@@ -719,6 +737,7 @@ public:
      * (Non-blocking) Reduce data into root from all calling processes on the
      * same communicator.
      *
+     * @param exec  The executor, on which the message buffer is located.
      * @param send_buffer  the buffer to reduce
      * @param recv_buffer  the reduced result
      * @param count  the number of elements to reduce
@@ -747,6 +766,7 @@ public:
      * (In-place) Reduce data from all calling processes from all calling
      * processes on same communicator.
      *
+     * @param exec  The executor, on which the message buffer is located.
      * @param recv_buffer  the data to reduce and the reduced result
      * @param count  the number of elements to reduce
      * @param operation  the MPI_Op type reduce operation.
@@ -769,6 +789,7 @@ public:
      * (In-place, non-blocking) Reduce data from all calling processes from all
      * calling processes on same communicator.
      *
+     * @param exec  The executor, on which the message buffer is located.
      * @param recv_buffer  the data to reduce and the reduced result
      * @param count  the number of elements to reduce
      * @param operation  the reduce operation. See @MPI_Op
@@ -796,6 +817,7 @@ public:
      * Reduce data from all calling processes from all calling processes on same
      * communicator.
      *
+     * @param exec  The executor, on which the message buffers are located.
      * @param send_buffer  the data to reduce
      * @param recv_buffer  the reduced result
      * @param count  the number of elements to reduce
@@ -820,6 +842,7 @@ public:
      * Reduce data from all calling processes from all calling processes on same
      * communicator.
      *
+     * @param exec  The executor, on which the message buffers are located.
      * @param send_buffer  the data to reduce
      * @param recv_buffer  the reduced result
      * @param count  the number of elements to reduce
@@ -847,6 +870,7 @@ public:
     /**
      * Gather data onto the root rank from all ranks in the communicator.
      *
+     * @param exec  The executor, on which the message buffers are located.
      * @param send_buffer  the buffer to gather from
      * @param send_count  the number of elements to send
      * @param recv_buffer  the buffer to gather into
@@ -876,6 +900,7 @@ public:
      * (Non-blocking) Gather data onto the root rank from all ranks in the
      * communicator.
      *
+     * @param exec  The executor, on which the message buffers are located.
      * @param send_buffer  the buffer to gather from
      * @param send_count  the number of elements to send
      * @param recv_buffer  the buffer to gather into
@@ -909,6 +934,7 @@ public:
      * Gather data onto the root rank from all ranks in the communicator with
      * offsets.
      *
+     * @param exec  The executor, on which the message buffers are located.
      * @param send_buffer  the buffer to gather from
      * @param send_count  the number of elements to send
      * @param recv_buffer  the buffer to gather into
@@ -939,6 +965,7 @@ public:
      * (Non-blocking) Gather data onto the root rank from all ranks in the
      * communicator with offsets.
      *
+     * @param exec  The executor, on which the message buffers are located.
      * @param send_buffer  the buffer to gather from
      * @param send_count  the number of elements to send
      * @param recv_buffer  the buffer to gather into
@@ -973,6 +1000,7 @@ public:
     /**
      * Gather data onto all ranks from all ranks in the communicator.
      *
+     * @param exec  The executor, on which the message buffers are located.
      * @param send_buffer  the buffer to gather from
      * @param send_count  the number of elements to send
      * @param recv_buffer  the buffer to gather into
@@ -1000,6 +1028,7 @@ public:
      * (Non-blocking) Gather data onto all ranks from all ranks in the
      * communicator.
      *
+     * @param exec  The executor, on which the message buffers are located.
      * @param send_buffer  the buffer to gather from
      * @param send_count  the number of elements to send
      * @param recv_buffer  the buffer to gather into
@@ -1030,6 +1059,7 @@ public:
     /**
      * Scatter data from root rank to all ranks in the communicator.
      *
+     * @param exec  The executor, on which the message buffers are located.
      * @param send_buffer  the buffer to gather from
      * @param send_count  the number of elements to send
      * @param recv_buffer  the buffer to gather into
@@ -1058,6 +1088,7 @@ public:
      * (Non-blocking) Scatter data from root rank to all ranks in the
      * communicator.
      *
+     * @param exec  The executor, on which the message buffers are located.
      * @param send_buffer  the buffer to gather from
      * @param send_count  the number of elements to send
      * @param recv_buffer  the buffer to gather into
@@ -1090,6 +1121,7 @@ public:
      * Scatter data from root rank to all ranks in the communicator with
      * offsets.
      *
+     * @param exec  The executor, on which the message buffers are located.
      * @param send_buffer  the buffer to gather from
      * @param send_count  the number of elements to send
      * @param recv_buffer  the buffer to gather into
@@ -1120,6 +1152,7 @@ public:
      * (Non-blocking) Scatter data from root rank to all ranks in the
      * communicator with offsets.
      *
+     * @param exec  The executor, on which the message buffers are located.
      * @param send_buffer  the buffer to gather from
      * @param send_count  the number of elements to send
      * @param recv_buffer  the buffer to gather into
@@ -1155,6 +1188,7 @@ public:
      * (In-place) Communicate data from all ranks to all other ranks in place
      * (MPI_Alltoall). See MPI documentation for more details.
      *
+     * @param exec  The executor, on which the message buffer is located.
      * @param buffer  the buffer to send and the buffer receive
      * @param recv_count  the number of elements to receive
      * @param comm  the communicator
@@ -1181,6 +1215,7 @@ public:
      * (In-place, Non-blocking) Communicate data from all ranks to all other
      * ranks in place (MPI_Ialltoall). See MPI documentation for more details.
      *
+     * @param exec  The executor, on which the message buffer is located.
      * @param buffer  the buffer to send and the buffer receive
      * @param recv_count  the number of elements to receive
      * @param comm  the communicator
@@ -1211,6 +1246,7 @@ public:
      * Communicate data from all ranks to all other ranks (MPI_Alltoall).
      * See MPI documentation for more details.
      *
+     * @param exec  The executor, on which the message buffers are located.
      * @param send_buffer  the buffer to send
      * @param send_count  the number of elements to send
      * @param recv_buffer  the buffer to receive
@@ -1238,6 +1274,7 @@ public:
      * (Non-blocking) Communicate data from all ranks to all other ranks
      * (MPI_Ialltoall). See MPI documentation for more details.
      *
+     * @param exec  The executor, on which the message buffers are located.
      * @param send_buffer  the buffer to send
      * @param send_count  the number of elements to send
      * @param recv_buffer  the buffer to receive
@@ -1269,6 +1306,7 @@ public:
      * Communicate data from all ranks to all other ranks with
      * offsets (MPI_Alltoallv). See MPI documentation for more details.
      *
+     * @param exec  The executor, on which the message buffers are located.
      * @param send_buffer  the buffer to send
      * @param send_count  the number of elements to send
      * @param send_offsets  the offsets for the send buffer
@@ -1300,6 +1338,7 @@ public:
      * Communicate data from all ranks to all other ranks with
      * offsets (MPI_Ialltoallv). See MPI documentation for more details.
      *
+     * @param exec  The executor, on which the message buffers are located.
      * @param send_buffer  the buffer to send
      * @param send_count  the number of elements to send
      * @param send_offsets  the offsets for the send buffer
@@ -1333,6 +1372,7 @@ public:
      * Communicate data from all ranks to all other ranks with
      * offsets (MPI_Ialltoallv). See MPI documentation for more details.
      *
+     * @param exec  The executor, on which the message buffers are located.
      * @param send_buffer  the buffer to send
      * @param send_count  the number of elements to send
      * @param send_offsets  the offsets for the send buffer
@@ -1365,6 +1405,7 @@ public:
      * Does a scan operation with the given operator.
      * (MPI_Scan). See MPI documentation for more details.
      *
+     * @param exec  The executor, on which the message buffers are located.
      * @param send_buffer  the buffer to scan from
      * @param recv_buffer  the result buffer
      * @param recv_count  the number of elements to scan
@@ -1388,6 +1429,7 @@ public:
      * Does a scan operation with the given operator.
      * (MPI_Iscan). See MPI documentation for more details.
      *
+     * @param exec  The executor, on which the message buffers are located.
      * @param send_buffer  the buffer to scan from
      * @param recv_buffer  the result buffer
      * @param recv_count  the number of elements to scan
@@ -1511,6 +1553,7 @@ public:
      * Create a window object with a given data pointer and type. A collective
      * operation.
      *
+     * @param exec  The executor, on which the base pointer is located.
      * @param base  the base pointer for the window object.
      * @param num_elems  the num_elems of type ValueType the window points to.
      * @param comm  the communicator whose ranks will have windows created.
@@ -1669,6 +1712,7 @@ public:
     /**
      * Put data into the target window.
      *
+     * @param exec  The executor, on which the message buffer is located.
      * @param origin_buffer  the buffer to send
      * @param origin_count  the number of elements to put
      * @param target_rank  the rank to put the data to
@@ -1690,6 +1734,7 @@ public:
     /**
      * Put data into the target window.
      *
+     * @param exec  The executor, on which the message buffer is located.
      * @param origin_buffer  the buffer to send
      * @param origin_count  the number of elements to put
      * @param target_rank  the rank to put the data to
@@ -1716,6 +1761,7 @@ public:
     /**
      * Accumulate data into the target window.
      *
+     * @param exec  The executor, on which the message buffer is located.
      * @param origin_buffer  the buffer to send
      * @param origin_count  the number of elements to put
      * @param target_rank  the rank to put the data to
@@ -1739,6 +1785,7 @@ public:
     /**
      * (Non-blocking) Accumulate data into the target window.
      *
+     * @param exec  The executor, on which the message buffer is located.
      * @param origin_buffer  the buffer to send
      * @param origin_count  the number of elements to put
      * @param target_rank  the rank to put the data to
@@ -1767,6 +1814,7 @@ public:
     /**
      * Get data from the target window.
      *
+     * @param exec  The executor, on which the message buffer is located.
      * @param origin_buffer  the buffer to send
      * @param origin_count  the number of elements to get
      * @param target_rank  the rank to get the data from
@@ -1788,6 +1836,7 @@ public:
     /**
      * Get data (with handle) from the target window.
      *
+     * @param exec  The executor, on which the message buffer is located.
      * @param origin_buffer  the buffer to send
      * @param origin_count  the number of elements to get
      * @param target_rank  the rank to get the data from
@@ -1813,6 +1862,7 @@ public:
     /**
      * Get Accumulate data from the target window.
      *
+     * @param exec  The executor, on which the message buffers are located.
      * @param origin_buffer  the buffer to send
      * @param origin_count  the number of elements to get
      * @param result_buffer  the buffer to receive the target data
@@ -1840,6 +1890,7 @@ public:
     /**
      * (Non-blocking) Get Accumulate data (with handle) from the target window.
      *
+     * @param exec  The executor, on which the message buffers are located.
      * @param origin_buffer  the buffer to send
      * @param origin_count  the number of elements to get
      * @param result_buffer  the buffer to receive the target data
@@ -1874,6 +1925,7 @@ public:
      * Fetch and operate on data from the target window (An optimized version of
      * Get_accumulate).
      *
+     * @param exec  The executor, on which the message buffer is located.
      * @param origin_buffer  the buffer to send
      * @param target_rank  the rank to get the data from
      * @param target_disp  the displacement at the target window
