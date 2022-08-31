@@ -14,7 +14,10 @@ if(GINKGO_BUILD_PYTHON_BINDINGS)
     else()
         add_subdirectory(${pybind11_SOURCE_DIR} ${pybind11_BINARY_DIR})
     endif()
-    pybind11_add_module(pygko ${PROJECT_SOURCE_DIR}/bindings/python.cpp)
+    pybind11_add_module(pygko
+      ${PROJECT_SOURCE_DIR}/bindings/python.cpp
+      ${PROJECT_SOURCE_DIR}/bindings/dense.cpp
+    )
     
     target_include_directories(pygko PRIVATE ${Ginkgo_BINARY_DIR}/include)
     target_link_libraries(pygko PRIVATE Ginkgo::ginkgo)
