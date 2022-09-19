@@ -431,9 +431,7 @@ public:
      * @param color The color to split the original comm object
      * @param key  The key to split the comm object
      */
-    communicator(const MPI_Comm& comm, int color, int key,
-                 std::shared_ptr<const Executor> exec)
-        : exec_(std::move(exec))
+    communicator(const MPI_Comm& comm, int color, int key)
     {
         MPI_Comm comm_out;
         GKO_ASSERT_NO_MPI_ERRORS(MPI_Comm_split(comm, color, key, &comm_out));
@@ -448,8 +446,7 @@ public:
      * @param color The color to split the original comm object
      * @param key  The key to split the comm object
      */
-    communicator(const communicator& comm, int color, int key)
-        : comm_(), exec_(comm.get_executor())
+    communicator(const communicator& comm, int color, int key) : comm_()
     {
         MPI_Comm comm_out;
         GKO_ASSERT_NO_MPI_ERRORS(
@@ -525,13 +522,6 @@ public:
      * @return  if the two comm objects are not equal
      */
     bool operator!=(const communicator& rhs) const { return !(*this == rhs); }
-
-    std::shared_ptr<const Executor> get_executor() const { return exec_; }
-
-    void set_executor(std::shared_ptr<const Executor> exec)
-    {
-        exec_ = std::move(exec);
-    }
 
     /**
      * This function is used to synchronize the ranks in the communicator.

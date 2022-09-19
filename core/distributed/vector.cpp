@@ -82,7 +82,7 @@ void Vector<ValueType>::apply_impl(const LinOp* alpha, const LinOp* b,
 
 template <typename ValueType>
 Vector<ValueType>::Vector(std::shared_ptr<const Executor> exec)
-    : Vector(exec, mpi::communicator(MPI_COMM_WORLD, exec), dim<2>{}, dim<2>{})
+    : Vector(exec, mpi::communicator(MPI_COMM_WORLD), dim<2>{}, dim<2>{})
 {}
 
 
@@ -458,8 +458,8 @@ ValueType& Vector<ValueType>::at_local(size_type row, size_type col) noexcept
 }
 
 template <typename ValueType>
-ValueType Vector<ValueType>::at_local(size_type row, size_type col) const
-    noexcept
+ValueType Vector<ValueType>::at_local(size_type row,
+                                      size_type col) const noexcept
 {
     return local_.at(row, col);
 }

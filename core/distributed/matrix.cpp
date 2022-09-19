@@ -57,24 +57,25 @@ GKO_REGISTER_OPERATION(build_local_nonlocal,
 
 template <typename ValueType, typename LocalIndexType, typename GlobalIndexType>
 Matrix<ValueType, LocalIndexType, GlobalIndexType>::Matrix(
-    mpi::communicator comm)
-    : Matrix(comm, with_matrix_type<gko::matrix::Csr>())
+    std::shared_ptr<const Executor> exec, mpi::communicator comm)
+    : Matrix(exec, comm, with_matrix_type<gko::matrix::Csr>())
 {}
 
 
 template <typename ValueType, typename LocalIndexType, typename GlobalIndexType>
 Matrix<ValueType, LocalIndexType, GlobalIndexType>::Matrix(
-    mpi::communicator comm, const LinOp* local_matrix_type)
-    : Matrix(comm, local_matrix_type, local_matrix_type)
+    std::shared_ptr<const Executor> exec, mpi::communicator comm,
+    const LinOp* local_matrix_type)
+    : Matrix(exec, comm, local_matrix_type, local_matrix_type)
 {}
 
 
 template <typename ValueType, typename LocalIndexType, typename GlobalIndexType>
 Matrix<ValueType, LocalIndexType, GlobalIndexType>::Matrix(
-    mpi::communicator comm, const LinOp* local_matrix_template,
-    const LinOp* non_local_matrix_template)
-    : EnableLinOp<Matrix<value_type, local_index_type,
-                         global_index_type>>{comm.get_executor()},
+    std::shared_ptr<const Executor> exec, mpi::communicator comm,
+    const LinOp* local_matrix_template, const LinOp* non_local_matrix_template)
+    : EnableLinOp<
+          Matrix<value_type, local_index_type, global_index_type>>{exec},
       DistributedBase{comm},
       send_offsets_(comm.size() + 1),
       send_sizes_(comm.size()),
