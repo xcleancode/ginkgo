@@ -29,7 +29,7 @@ set(EXAMPLES_LIST
     performance-debugging
     preconditioner-export
     simple-solver-logging
-    richardson)
+    async-jacobi)
 
 if(GINKGO_BUILD_CUDA AND GINKGO_BUILD_OMP)
     list(APPEND EXAMPLES_LIST custom-matrix-format)
