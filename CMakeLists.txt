@@ -345,15 +345,9 @@ if(GINKGO_BUILD_DOC)
     add_subdirectory(doc)
 endif()
 
-
-# add escape character '\' for space
-string(REPLACE " " "\ " PKG_CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
-# add escape character '\' for space in regex mode
-list(TRANSFORM GINKGO_INTERFACE_LINK_FLAGS REPLACE " " "\\\\ ")
-list(TRANSFORM GINKGO_INTERFACE_CXX_FLAGS REPLACE " " "\\\\ ")
 # convert the list to string
-string(REPLACE ";" " " GINKGO_INTERFACE_CXX_FLAGS "${GINKGO_INTERFACE_CXX_FLAGS}")
-string(REPLACE ";" " " GINKGO_INTERFACE_LINK_FLAGS "${GINKGO_INTERFACE_LINK_FLAGS}")
+string(REPLACE ";" " " GINKGO_INTERFACE_CFLAGS "${GINKGO_INTERFACE_CFLAGS}")
+string(REPLACE ";" " " GINKGO_INTERFACE_LDFLAGS "${GINKGO_INTERFACE_LDFLAGS}")
 configure_file(${Ginkgo_SOURCE_DIR}/cmake/ginkgo.pc.in
     ${Ginkgo_BINARY_DIR}/ginkgo.pc.in @ONLY)
 file(GENERATE OUTPUT ${Ginkgo_BINARY_DIR}/ginkgo_$<CONFIG>.pc
