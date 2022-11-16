@@ -62,15 +62,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 template <typename ValueLocalGlobalIndexType>
 class MatrixCreation : public CommonMpiTestFixture {
 protected:
-    using value_type =
-        typename std::tuple_element<0, decltype(
-                                           ValueLocalGlobalIndexType())>::type;
-    using local_index_type =
-        typename std::tuple_element<1, decltype(
-                                           ValueLocalGlobalIndexType())>::type;
-    using global_index_type =
-        typename std::tuple_element<2, decltype(
-                                           ValueLocalGlobalIndexType())>::type;
+    using value_type = typename std::tuple_element<
+        0, decltype(ValueLocalGlobalIndexType())>::type;
+    using local_index_type = typename std::tuple_element<
+        1, decltype(ValueLocalGlobalIndexType())>::type;
+    using global_index_type = typename std::tuple_element<
+        2, decltype(ValueLocalGlobalIndexType())>::type;
     using dist_mtx_type =
         gko::experimental::distributed::Matrix<value_type, local_index_type,
                                                global_index_type>;
@@ -358,25 +355,11 @@ TYPED_TEST(Matrix, CanApplyToSingleVector)
     auto rank = this->comm.rank();
     this->x->read_distributed(vec_md, this->col_part.get());
     this->y->read_distributed(vec_md, this->row_part.get());
+    this->y->fill(gko::zero<value_type>());
 
-    {
-        SCOPED_TRACE("Default topology");
-        this->y->fill(gko::zero<value_type>());
+    this->dist_mat->apply(this->x.get(), this->y.get());
 
-        this->dist_mat->apply(this->x.get(), this->y.get());
-
-        GKO_ASSERT_MTX_NEAR(this->y->get_local_vector(), result[rank], 0);
-    }
-    {
-        SCOPED_TRACE("Graph topology");
-        auto dist_mat_graph_comm = gko::clone(this->dist_mat);
-        dist_mat_graph_comm->use_neighbor_comm();
-        this->y->fill(gko::zero<value_type>());
-
-        dist_mat_graph_comm->apply(this->x.get(), this->y.get());
-
-        GKO_ASSERT_MTX_NEAR(this->y->get_local_vector(), result[rank], 0);
-    }
+    GKO_ASSERT_MTX_NEAR(this->y->get_local_vector(), result[rank], 0);
 }
 
 
@@ -391,25 +374,11 @@ TYPED_TEST(Matrix, CanApplyToMultipleVectors)
     auto rank = this->comm.rank();
     this->x->read_distributed(vec_md, this->col_part.get());
     this->y->read_distributed(vec_md, this->row_part.get());
+    this->y->fill(gko::zero<value_type>());
 
-    {
-        SCOPED_TRACE("Default topology");
-        this->y->fill(gko::zero<value_type>());
+    this->dist_mat->apply(this->x.get(), this->y.get());
 
-        this->dist_mat->apply(this->x.get(), this->y.get());
-
-        GKO_ASSERT_MTX_NEAR(this->y->get_local_vector(), result[rank], 0);
-    }
-    {
-        SCOPED_TRACE("Graph topology");
-        auto dist_mat_graph_comm = gko::clone(this->dist_mat);
-        dist_mat_graph_comm->use_neighbor_comm();
-        this->y->fill(gko::zero<value_type>());
-
-        dist_mat_graph_comm->apply(this->x.get(), this->y.get());
-
-        GKO_ASSERT_MTX_NEAR(this->y->get_local_vector(), result[rank], 0);
-    }
+    GKO_ASSERT_MTX_NEAR(this->y->get_local_vector(), result[rank], 0);
 }
 
 
@@ -426,25 +395,11 @@ TYPED_TEST(Matrix, CanAdvancedApplyToSingleVector)
     this->beta = gko::initialize<dense_vec_type>({-3.0}, this->exec);
     this->x->read_distributed(vec_md, this->col_part.get());
     this->y->read_distributed(vec_md, this->row_part.get());
-    auto y_clone = gko::clone(this->y);
 
-    {
-        SCOPED_TRACE("Default topology");
-        this->dist_mat->apply(this->alpha.get(), this->x.get(),
-                              this->beta.get(), this->y.get());
+    this->dist_mat->apply(this->alpha.get(), this->x.get(), this->beta.get(),
+                          this->y.get());
 
-        GKO_ASSERT_MTX_NEAR(this->y->get_local_vector(), result[rank], 0);
-    }
-    {
-        SCOPED_TRACE("Graph topology");
-        auto dist_mat_graph_comm = gko::clone(this->dist_mat);
-        dist_mat_graph_comm->use_neighbor_comm();
-
-        dist_mat_graph_comm->apply(this->alpha.get(), this->x.get(),
-                                   this->beta.get(), y_clone.get());
-
-        GKO_ASSERT_MTX_NEAR(y_clone->get_local_vector(), result[rank], 0);
-    }
+    GKO_ASSERT_MTX_NEAR(this->y->get_local_vector(), result[rank], 0);
 }
 
 
@@ -452,30 +407,14 @@ TYPED_TEST(Matrix, CanApplyToSingleVectorLarge)
 {
     using value_type = typename TestFixture::value_type;
     this->init_large(100, 1);
-
     this->csr_mat->apply(this->dense_x.get(), this->dense_y.get());
-    {
-        SCOPED_TRACE("Default topology");
-        this->y->fill(gko::zero<value_type>());
+    this->y->fill(gko::zero<value_type>());
 
-        this->dist_mat_large->apply(this->x.get(), this->y.get());
+    this->dist_mat_large->apply(this->x.get(), this->y.get());
 
-        this->assert_local_vector_equal_to_global_vector(
-            this->y.get(), this->dense_y.get(), this->row_part_large.get(),
-            this->comm.rank());
-    }
-    {
-        SCOPED_TRACE("Graph topology");
-        auto dist_mat_graph_comm = gko::clone(this->dist_mat_large);
-        dist_mat_graph_comm->use_neighbor_comm();
-        this->y->fill(gko::zero<value_type>());
-
-        dist_mat_graph_comm->apply(this->x.get(), this->y.get());
-
-        this->assert_local_vector_equal_to_global_vector(
-            this->y.get(), this->dense_y.get(), this->row_part_large.get(),
-            this->comm.rank());
-    }
+    this->assert_local_vector_equal_to_global_vector(
+        this->y.get(), this->dense_y.get(), this->row_part_large.get(),
+        this->comm.rank());
 }
 
 
@@ -483,30 +422,14 @@ TYPED_TEST(Matrix, CanApplyToMultipleVectorsLarge)
 {
     using value_type = typename TestFixture::value_type;
     this->init_large(100, 17);
-
     this->csr_mat->apply(this->dense_x.get(), this->dense_y.get());
-    {
-        SCOPED_TRACE("Default topology");
-        this->y->fill(gko::zero<value_type>());
+    this->y->fill(gko::zero<value_type>());
 
-        this->dist_mat_large->apply(this->x.get(), this->y.get());
+    this->dist_mat_large->apply(this->x.get(), this->y.get());
 
-        this->assert_local_vector_equal_to_global_vector(
-            this->y.get(), this->dense_y.get(), this->row_part_large.get(),
-            this->comm.rank());
-    }
-    {
-        SCOPED_TRACE("Graph topology");
-        auto dist_mat_graph_comm = gko::clone(this->dist_mat_large);
-        dist_mat_graph_comm->use_neighbor_comm();
-        this->y->fill(gko::zero<value_type>());
-
-        dist_mat_graph_comm->apply(this->x.get(), this->y.get());
-
-        this->assert_local_vector_equal_to_global_vector(
-            this->y.get(), this->dense_y.get(), this->row_part_large.get(),
-            this->comm.rank());
-    }
+    this->assert_local_vector_equal_to_global_vector(
+        this->y.get(), this->dense_y.get(), this->row_part_large.get(),
+        this->comm.rank());
 }
 
 
@@ -514,32 +437,15 @@ TYPED_TEST(Matrix, CanAdvancedApplyToMultipleVectorsLarge)
 {
     using value_type = typename TestFixture::value_type;
     this->init_large(100, 17);
-    auto y_clone = gko::clone(this->y);
-
     this->csr_mat->apply(this->alpha.get(), this->dense_x.get(),
                          this->beta.get(), this->dense_y.get());
-    {
-        SCOPED_TRACE("Default topology");
 
-        this->dist_mat_large->apply(this->alpha.get(), this->x.get(),
-                                    this->beta.get(), this->y.get());
+    this->dist_mat_large->apply(this->alpha.get(), this->x.get(),
+                                this->beta.get(), this->y.get());
 
-        this->assert_local_vector_equal_to_global_vector(
-            this->y.get(), this->dense_y.get(), this->row_part_large.get(),
-            this->comm.rank());
-    }
-    {
-        SCOPED_TRACE("Graph topology");
-        auto dist_mat_graph_comm = gko::clone(this->dist_mat_large);
-        dist_mat_graph_comm->use_neighbor_comm();
-
-        dist_mat_graph_comm->apply(this->alpha.get(), this->x.get(),
-                                   this->beta.get(), y_clone.get());
-
-        this->assert_local_vector_equal_to_global_vector(
-            y_clone.get(), this->dense_y.get(), this->row_part_large.get(),
-            this->comm.rank());
-    }
+    this->assert_local_vector_equal_to_global_vector(
+        this->y.get(), this->dense_y.get(), this->row_part_large.get(),
+        this->comm.rank());
 }
 
 
