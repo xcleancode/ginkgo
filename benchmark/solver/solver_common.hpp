@@ -470,9 +470,10 @@ void solve_system(const std::string& solver_name,
                 add_or_set_member(solver_json, "preconditioner",
                                   rapidjson::Value(rapidjson::kObjectType),
                                   allocator);
-                write_precond_info(lend(clone(get_executor()->get_master(),
-                                              prec->get_preconditioner())),
-                                   solver_json["preconditioner"], allocator);
+                write_precond_info(
+                    lend(clone(get_executor(FLAGS_gpu_timer)->get_master(),
+                               prec->get_preconditioner())),
+                    solver_json["preconditioner"], allocator);
             }
 
             auto apply_logger =
