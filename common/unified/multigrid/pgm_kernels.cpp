@@ -199,8 +199,9 @@ void find_strongest_neighbor(
         exec,
         [] GKO_KERNEL(auto row, auto row_ptrs, auto col_idxs, auto weight_vals,
                       auto diag, auto agg, auto strongest_neighbor) {
-            auto max_weight_unagg = zero<ValueType>();
-            auto max_weight_agg = zero<ValueType>();
+            using value_type = device_type<ValueType>;
+            auto max_weight_unagg = zero<value_type>();
+            auto max_weight_agg = zero<value_type>();
             IndexType strongest_unagg = -1;
             IndexType strongest_agg = -1;
             if (agg[row] != -1) {
@@ -264,10 +265,11 @@ void assign_to_exist_agg(std::shared_ptr<const DefaultExecutor> exec,
             [] GKO_KERNEL(auto row, auto row_ptrs, auto col_idxs,
                           auto weight_vals, auto diag, auto agg_const_val,
                           auto agg_val) {
+                using value_type = device_type<ValueType>;
                 if (agg_val[row] != -1) {
                     return;
                 }
-                ValueType max_weight_agg = zero<ValueType>();
+                auto max_weight_agg = zero<value_type>();
                 IndexType strongest_agg = -1;
                 for (auto idx = row_ptrs[row]; idx < row_ptrs[row + 1]; idx++) {
                     auto col = col_idxs[idx];
@@ -301,10 +303,11 @@ void assign_to_exist_agg(std::shared_ptr<const DefaultExecutor> exec,
             exec,
             [] GKO_KERNEL(auto row, auto row_ptrs, auto col_idxs,
                           auto weight_vals, auto diag, auto agg_val) {
+                using value_type = device_type<ValueType>;
                 if (agg_val[row] != -1) {
                     return;
                 }
-                ValueType max_weight_agg = zero<ValueType>();
+                auto max_weight_agg = zero<value_type>();
                 IndexType strongest_agg = -1;
                 for (auto idx = row_ptrs[row]; idx < row_ptrs[row + 1]; idx++) {
                     auto col = col_idxs[idx];

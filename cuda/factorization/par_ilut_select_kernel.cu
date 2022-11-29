@@ -77,8 +77,8 @@ void sampleselect_filter(const ValueType* values, IndexType size,
         static_cast<IndexType>(ceildiv(num_threads_total, default_block_size));
     if (num_blocks > 0) {
         kernel::filter_bucket<<<num_blocks, default_block_size>>>(
-            as_cuda_type(values), size, bucket, oracles, partial_counts, out,
-            items_per_thread);
+            as_cuda_type(values), size, bucket, oracles, partial_counts,
+            as_cuda_type(out), items_per_thread);
     }
 }
 

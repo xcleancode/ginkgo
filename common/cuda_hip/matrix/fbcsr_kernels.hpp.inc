@@ -295,7 +295,7 @@ void fallback_transpose(const std::shared_ptr<const DefaultExecutor> exec,
         thrust::device_pointer_cast(out_col_idxs),
         thrust::device_pointer_cast(permutation.get_data())));
     using tuple_type =
-        thrust::tuple<IndexType, IndexType, device_type<ValueType>>;
+        thrust::tuple<IndexType, IndexType, IndexType>;
     thrust::sort(thrust::device, zip_it, zip_it + nnzb,
                  [] __device__(const tuple_type& a, const tuple_type& b) {
                      return thrust::tie(thrust::get<0>(a), thrust::get<1>(a)) <
