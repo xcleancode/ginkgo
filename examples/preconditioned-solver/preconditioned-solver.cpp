@@ -40,13 +40,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string>
 
 
-#define PERFSTUBS_USE_TIMERS
-#include "perfstubs_api/timer.h"
-
-
 int main(int argc, char* argv[])
 {
-    PERFSTUBS_INITIALIZE();
     // Some shortcuts
     using ValueType = double;
     using RealValueType = gko::remove_complex<ValueType>;
@@ -91,7 +86,7 @@ int main(int argc, char* argv[])
 
     // executor where Ginkgo will perform the computation
     const auto exec = exec_map.at(executor_string)();  // throws if not valid
-    exec->add_logger(gko::log::Tau::create(exec));
+    exec->add_logger(gko::log::get_nvtx_hook());
 
     // Read data
     auto A = share(gko::read<mtx>(std::ifstream("data/A.mtx"), exec));

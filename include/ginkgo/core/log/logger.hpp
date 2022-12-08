@@ -618,6 +618,39 @@ public:
 
 
 /**
+ * Increments the number of "global loggers" known to Ginkgo. A global logger is
+ * a Logger attached to an Executor that expects to be notified all events
+ * from all Ginkgo objects on this Executor.
+ * This reference count is used to decide whether to forward events from other
+ * objects to the Executor.
+ * @see propagate_to_exec
+ */
+void inc_global_logger_refcount();
+
+
+/**
+ * Decrements the number of "global loggers" known to Ginkgo. A global logger is
+ * a Logger attached to an Executor that expects to be notified all events
+ * from all Ginkgo objects on this Executor.
+ * This reference count is used to decide whether to forward events from other
+ * objects to the Executor.
+ * @see propagate_to_exec
+ */
+void dec_global_logger_refcount();
+
+
+/**
+ * Returns whether logged events should get forwarded to the associated
+ * executor. If true, all events that happen at a non Executor object are
+ * reported at the object and the executor both. If false, events are only
+ * reported at the object they happen at.
+ * @see inc_global_logger_refcount
+ * @see dec_global_logger_refcount
+ */
+bool propagate_to_exec();
+
+
+/**
  * EnableLogging is a mixin which should be inherited by any class which wants
  * to enable logging. All the received events are passed to the loggers this
  * class contains.
@@ -687,9 +720,11 @@ protected:
     template <size_type Event, typename... Params>
     void log(Params&&... params) const
     {
-        propagate_log_helper<Event, ConcreteLoggable>::propagate_log(
-            static_cast<const ConcreteLoggable*>(this),
-            std::forward<Params>(params)...);
+        if (propagate_to_exec()) {
+            propagate_log_helper<Event, ConcreteLoggable>::propagate_log(
+                static_cast<const ConcreteLoggable*>(this),
+                std::forward<Params>(params)...);
+        }
         for (auto& logger : loggers_) {
             logger->template on<Event>(std::forward<Params>(params)...);
         }

@@ -152,6 +152,16 @@ scoped_device_id_guard::scoped_device_id_guard(const CudaExecutor* exec,
     GKO_NOT_COMPILED(cuda);
 
 
+namespace log {
+
+
+void begin_nvtx(const char*) GKO_NOT_COMPILED(cuda);
+
+
+void end_nvtx(const char*) GKO_NOT_COMPILED(cuda);
+
+
+}  // namespace log
 }  // namespace gko
 
 

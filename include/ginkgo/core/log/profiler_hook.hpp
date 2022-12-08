@@ -30,51 +30,29 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************<GINKGO LICENSE>*******************************/
 
-#if GKO_HAVE_TAU
-#define PERFSTUBS_USE_TIMERS
-#include <perfstubs_api/timer.h>
-#endif
+#ifndef GKO_PUBLIC_CORE_LOG_PROFILER_HOOK_HPP_
+#define GKO_PUBLIC_CORE_LOG_PROFILER_HOOK_HPP_
 
 
-#include <ginkgo/core/base/exception_helpers.hpp>
+#include <ginkgo/config.hpp>
+#include <ginkgo/core/log/logger.hpp>
 
 
 namespace gko {
 namespace log {
 
 
-#if GKO_HAVE_TAU
+std::shared_ptr<Logger> get_tau_hook(bool initialize = true);
 
 
-void init_tau() { PERFSTUBS_INITIALIZE(); }
+std::shared_ptr<Logger> get_nvtx_hook();
 
 
-void begin_tau(const char* name) { PERFSTUBS_START_STRING(name); }
-
-
-void end_tau(const char*) { PERFSTUBS_STOP_STRING(name); }
-
-
-void finalize_tau() { PERFSTUBS_FINALIZE(); }
-
-
-#else
-
-
-void init_tau() GKO_NOT_COMPILED(tau);
-
-
-void begin_tau(const char*) GKO_NOT_COMPILED(tau);
-
-
-void end_tau(const char*) GKO_NOT_COMPILED(tau);
-
-
-void finalize_tau() GKO_NOT_COMPILED(tau);
-
-
-#endif
+std::shared_ptr<Logger> get_roctx_hook();
 
 
 }  // namespace log
 }  // namespace gko
+
+
+#endif  // GKO_PUBLIC_CORE_LOG_PROFILER_HOOK_HPP_

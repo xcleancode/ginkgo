@@ -17,6 +17,8 @@ set(PROJECT_VERSION_TAG ${Ginkgo_VERSION_TAG})
 include(cmake/hip_path.cmake)
 include(cmake/autodetect_executors.cmake)
 
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/Modules/")
+
 # Ginkgo configuration options
 option(GINKGO_DEVEL_TOOLS "Add development tools to the build system" OFF)
 option(GINKGO_BUILD_TESTS "Generate build files for unit tests" ON)
@@ -185,8 +187,6 @@ endif()
 if(GINKGO_WITH_IWYU)
     find_program(GINKGO_IWYU_PATH iwyu)
 endif()
-
-list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/Modules/")
 
 # Find important header files, store the definitions in
 # include/ginkgo/config.h.in For details, see

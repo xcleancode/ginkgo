@@ -28,6 +28,8 @@ target_sources(ginkgo
     log/convergence.cpp
     log/logger.cpp
     log/performance_hint.cpp
+    log/profiler_hook.cpp
+    log/tau.cpp
     log/record.cpp
     log/stream.cpp
     matrix/coo.cpp

@@ -34,6 +34,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #include <iostream>
+#include <nvToolsExt.h>
+#include <stdexcept>
+#include <thread>
 
 
 #include <cuda_runtime.h>
@@ -41,6 +44,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <ginkgo/config.hpp>
 #include <ginkgo/core/base/device.hpp>
+#include <ginkgo/core/base/exception.hpp>
 #include <ginkgo/core/base/exception_helpers.hpp>
 
 
@@ -281,4 +285,14 @@ void CudaExecutor::init_handles()
 }
 
 
+namespace log {
+
+
+void begin_nvtx(const char* name) { nvtxRangePush(name); }
+
+
+void end_nvtx(const char* name) { nvtxRangePop(); }
+
+
+}  // namespace log
 }  // namespace gko
