@@ -86,7 +86,11 @@ int main(int argc, char* argv[])
 
     // executor where Ginkgo will perform the computation
     const auto exec = exec_map.at(executor_string)();  // throws if not valid
-    exec->add_logger(gko::log::get_nvtx_hook());
+    exec->add_logger(gko::log::create_nvtx_hook());
+    if (exec->get_master() != exec) {
+        // mark host operations in gray
+        exec->get_master()->add_logger(gko::log::create_nvtx_hook(0x555555U));
+    }
 
     // Read data
     auto A = share(gko::read<mtx>(std::ifstream("data/A.mtx"), exec));

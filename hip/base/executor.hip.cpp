@@ -306,10 +306,13 @@ void HipExecutor::init_handles()
 namespace log {
 
 
-void begin_roctx(const char* name) { roctxRangePush(name); }
+void begin_roctx(const char* name, profile_event_category)
+{
+    roctxRangePush(name);
+}
 
 
-void end_roctx(const char*) { roctxRangePop(); }
+void end_roctx(const char*, profile_event_category) { roctxRangePop(); }
 
 
 }  // namespace log

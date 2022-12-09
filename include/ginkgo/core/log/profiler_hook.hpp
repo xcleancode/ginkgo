@@ -42,13 +42,23 @@ namespace gko {
 namespace log {
 
 
+enum class profile_event_category {
+    memory,
+    operation,
+    object,
+    linop,
+    factory,
+    criterion,
+};
+
+
 std::shared_ptr<Logger> get_tau_hook(bool initialize = true);
 
 
-std::shared_ptr<Logger> get_nvtx_hook();
+std::shared_ptr<Logger> create_nvtx_hook(uint32 color_rgb = 0xFFCB05U);
 
 
-std::shared_ptr<Logger> get_roctx_hook();
+std::shared_ptr<Logger> create_roctx_hook();
 
 
 }  // namespace log
