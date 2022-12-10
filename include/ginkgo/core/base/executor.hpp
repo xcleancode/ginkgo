@@ -141,6 +141,8 @@ struct cublasContext;
 
 struct cusparseContext;
 
+struct CUstream_st;
+
 struct hipblasContext;
 
 struct hipsparseContext;
@@ -1401,7 +1403,8 @@ public:
     static std::shared_ptr<CudaExecutor> create(
         int device_id, std::shared_ptr<Executor> master,
         bool device_reset = false,
-        allocation_mode alloc_mode = default_cuda_alloc_mode);
+        allocation_mode alloc_mode = default_cuda_alloc_mode,
+        CUstream_st* stream = nullptr);
 
     std::shared_ptr<Executor> get_master() noexcept override;
 
@@ -1509,6 +1512,14 @@ public:
      */
     int get_closest_numa() const { return this->get_exec_info().numa_node; }
 
+    /**
+     * Returns the CUDA stream used by this executor. Can be nullptr for the
+     * default stream.
+     *
+     * @return  the stream used to execute kernels and memory operations.
+     */
+    CUstream_st* get_stream() const { return stream_; }
+
 protected:
     void set_gpu_property();
 
@@ -1516,10 +1527,12 @@ protected:
 
     CudaExecutor(int device_id, std::shared_ptr<Executor> master,
                  bool device_reset = false,
-                 allocation_mode alloc_mode = default_cuda_alloc_mode)
+                 allocation_mode alloc_mode = default_cuda_alloc_mode,
+                 CUstream_st* stream = nullptr)
         : EnableDeviceReset{device_reset},
           master_(master),
-          alloc_mode_{alloc_mode}
+          alloc_mode_{alloc_mode},
+          stream_{stream}
     {
         this->get_exec_info().device_id = device_id;
         this->get_exec_info().num_computing_units = 0;
@@ -1570,6 +1583,7 @@ private:
     using handle_manager = std::unique_ptr<T, std::function<void(T*)>>;
     handle_manager<cublasContext> cublas_handle_;
     handle_manager<cusparseContext> cusparse_handle_;
+    CUstream_st* stream_;
 
     allocation_mode alloc_mode_;
 };
