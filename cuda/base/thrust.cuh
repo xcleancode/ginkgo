@@ -30,43 +30,28 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************<GINKGO LICENSE>*******************************/
 
-#include "core/multigrid/pgm_kernels.hpp"
+#ifndef GKO_CUDA_BASE_THRUST_CUH_
+#define GKO_CUDA_BASE_THRUST_CUH_
 
 
-#include <memory>
-
-
-#include <thrust/device_ptr.h>
-#include <thrust/iterator/zip_iterator.h>
-#include <thrust/reduce.h>
-#include <thrust/sort.h>
-#include <thrust/tuple.h>
-
-
-#include <ginkgo/core/base/exception_helpers.hpp>
-#include <ginkgo/core/base/math.hpp>
-#include <ginkgo/core/multigrid/pgm.hpp>
-
-
-#include "hip/base/thrust.hip.hpp"
-#include "hip/base/types.hip.hpp"
+#include <thrust/execution_policy.h>
+#include <thrust/system/cuda/detail/execution_policy.h>
 
 
 namespace gko {
 namespace kernels {
-namespace hip {
-/**
- * @brief The PGM solver namespace.
- *
- * @ingroup pgm
- */
-namespace pgm {
+namespace cuda {
 
 
-#include "common/cuda_hip/multigrid/pgm_kernels.hpp.inc"
+inline auto thrust_policy(std::shared_ptr<const CudaExecutor> exec)
+{
+    return thrust::cuda::par.on(exec->get_stream());
+}
 
 
-}  // namespace pgm
-}  // namespace hip
+}  // namespace cuda
 }  // namespace kernels
 }  // namespace gko
+
+
+#endif  // GKO_CUDA_BASE_THRUST_CUH_
