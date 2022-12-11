@@ -97,7 +97,7 @@ void threshold_filter(syn::value_list<int, subwarp_size>,
     if (num_blocks > 0) {
         kernel::threshold_filter_nnz<subwarp_size>
             <<<num_blocks, default_block_size, 0, exec->get_stream()>>>(
-                old_row_ptrs, as_cuda_type(old_vals), num_rows, threshold,
+                old_row_ptrs, as_device_type(old_vals), num_rows, threshold,
                 new_row_ptrs, lower);
     }
 
@@ -125,9 +125,9 @@ void threshold_filter(syn::value_list<int, subwarp_size>,
     if (num_blocks > 0) {
         kernel::threshold_filter<subwarp_size>
             <<<num_blocks, default_block_size, 0, exec->get_stream()>>>(
-                old_row_ptrs, old_col_idxs, as_cuda_type(old_vals), num_rows,
+                old_row_ptrs, old_col_idxs, as_device_type(old_vals), num_rows,
                 threshold, new_row_ptrs, new_row_idxs, new_col_idxs,
-                as_cuda_type(new_vals), lower);
+                as_device_type(new_vals), lower);
     }
 }
 
