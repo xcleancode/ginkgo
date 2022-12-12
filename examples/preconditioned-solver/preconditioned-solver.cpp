@@ -86,29 +86,34 @@ int main(int argc, char* argv[])
 
     // executor where Ginkgo will perform the computation
     const auto exec = exec_map.at(executor_string)();  // throws if not valid
-    exec->add_logger(gko::log::create_nvtx_hook());
+    auto device_logger = gko::log::ProfilerHook::create_roctx();
+    exec->add_logger(device_logger);
     if (exec->get_master() != exec) {
         // mark host operations in gray
-        exec->get_master()->add_logger(gko::log::create_nvtx_hook(0x555555U));
+        exec->get_master()->add_logger(
+            gko::log::ProfilerHook::create_roctx(/*0xFFAAAAAAu*/));
     }
 
     // Read data
     auto A = share(gko::read<mtx>(std::ifstream("data/A.mtx"), exec));
     auto b = gko::read<vec>(std::ifstream("data/b.mtx"), exec);
     auto x = gko::read<vec>(std::ifstream("data/x0.mtx"), exec);
+    device_logger->set_object_name(A.get(), "A");
 
     const RealValueType reduction_factor{1e-7};
     // Create solver factory
     auto solver_gen =
         cg::build()
             .with_criteria(
-                gko::stop::Iteration::build().with_max_iters(10000u).on(exec))
+                gko::stop::Iteration::build().with_max_iters(1000u).on(exec))
             // Add preconditioner, these 2 lines are the only
             // difference from the simple solver example
             .with_preconditioner(bj::build().with_max_block_size(8u).on(exec))
             .on(exec);
+    device_logger->set_object_name(solver_gen.get(), "solver_gen");
     // Create solver
     auto solver = solver_gen->generate(A);
+    device_logger->set_object_name(solver.get(), "solver");
 
     // Solve system
     solver->apply(lend(b), lend(x));
