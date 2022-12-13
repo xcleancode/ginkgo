@@ -147,7 +147,12 @@ struct hipblasContext;
 
 struct hipsparseContext;
 
+#if GINKGO_HIP_PLATFORM_HCC
 struct ihipStream_t;
+#define GKO_HIP_STREAM_STRUCT ihipStream_t
+#else
+#define GKO_HIP_STREAM_STRUCT CUstream_st
+#endif
 
 
 namespace gko {
@@ -1625,7 +1630,7 @@ public:
         int device_id, std::shared_ptr<Executor> master,
         bool device_reset = false,
         allocation_mode alloc_mode = default_hip_alloc_mode,
-        ihipStream_t* stream = nullptr);
+        GKO_HIP_STREAM_STRUCT* stream = nullptr);
 
     std::shared_ptr<Executor> get_master() noexcept override;
 
@@ -1733,7 +1738,7 @@ public:
         return this->get_exec_info().closest_pu_ids;
     }
 
-    ihipStream_t* get_stream() const { return stream_; }
+    GKO_HIP_STREAM_STRUCT* get_stream() const { return stream_; }
 
 protected:
     void set_gpu_property();
@@ -1743,7 +1748,7 @@ protected:
     HipExecutor(int device_id, std::shared_ptr<Executor> master,
                 bool device_reset = false,
                 allocation_mode alloc_mode = default_hip_alloc_mode,
-                ihipStream_t* stream = nullptr)
+                GKO_HIP_STREAM_STRUCT* stream = nullptr)
         : EnableDeviceReset{device_reset},
           master_(master),
           alloc_mode_(alloc_mode),
@@ -1799,7 +1804,7 @@ private:
     handle_manager<hipsparseContext> hipsparse_handle_;
 
     allocation_mode alloc_mode_;
-    ihipStream_t* stream_;
+    GKO_HIP_STREAM_STRUCT* stream_;
 };
 
 
