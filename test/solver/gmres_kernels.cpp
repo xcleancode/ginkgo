@@ -106,10 +106,12 @@ protected:
         y = gen_mtx(gko::solver::gmres_default_krylov_dim, nrhs);
         before_preconditioner = Mtx::create_with_config_of(x.get());
         b = gen_mtx(m, nrhs);
-        krylov_bases = gen_mtx(m * (gko::solver::gmres_default_krylov_dim + 1), nrhs);
+        krylov_bases =
+            gen_mtx(m * (gko::solver::gmres_default_krylov_dim + 1), nrhs);
         hessenberg = gen_mtx(gko::solver::gmres_default_krylov_dim + 1,
                              gko::solver::gmres_default_krylov_dim * nrhs);
-        hessenberg_iter = gen_mtx(gko::solver::gmres_default_krylov_dim + 1, nrhs);
+        hessenberg_iter =
+            gen_mtx(gko::solver::gmres_default_krylov_dim + 1, nrhs);
         residual = gen_mtx(m, nrhs);
         residual_norm = gen_mtx<norm_type>(1, nrhs);
         residual_norm_collection =
