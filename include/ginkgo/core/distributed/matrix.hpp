@@ -550,10 +550,10 @@ private:
     std::unique_ptr<gko::matrix::RowGatherer<local_index_type>> gather_idxs_;
     array<global_index_type> non_local_to_global_;
     gko::detail::DenseCache<value_type> one_scalar_;
-    gko::detail::DenseCache<value_type> host_send_buffer_;
-    gko::detail::DenseCache<value_type> host_recv_buffer_;
-    gko::detail::DenseCache<value_type> send_buffer_;
-    gko::detail::DenseCache<value_type> recv_buffer_;
+    gko::detail::DenseCache<next_precision<value_type>> host_send_buffer_;
+    gko::detail::DenseCache<next_precision<value_type>> host_recv_buffer_;
+    gko::detail::DenseCache<next_precision<value_type>> send_buffer_;
+    gko::detail::DenseCache<next_precision<value_type>> recv_buffer_;
     std::shared_ptr<LinOp> local_mtx_;
     std::shared_ptr<LinOp> non_local_mtx_;
 };

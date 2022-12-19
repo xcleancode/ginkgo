@@ -283,7 +283,8 @@ mpi::request Matrix<ValueType, LocalIndexType, GlobalIndexType>::communicate(
         host_send_buffer_->copy_from(send_buffer_.get());
     }
 
-    mpi::contiguous_type type(num_cols, mpi::type_impl<ValueType>::get_type());
+    mpi::contiguous_type type(
+        num_cols, mpi::type_impl<next_precision<value_type>>::get_type());
     auto send_ptr = use_host_buffer ? host_send_buffer_->get_const_values()
                                     : send_buffer_->get_const_values();
     auto recv_ptr = use_host_buffer ? host_recv_buffer_->get_values()
