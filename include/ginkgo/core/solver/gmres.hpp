@@ -54,6 +54,8 @@ namespace gko {
 namespace solver {
 
 
+[[deprecated]] constexpr size_type default_krylov_dim = 100u;
+
 constexpr size_type gmres_default_krylov_dim = 100u;
 
 
@@ -213,7 +215,7 @@ struct workspace_traits<Gmres<ValueType>> {
     constexpr static int stop = 0;
     // reduction tmp array
     constexpr static int tmp = 1;
-    // reduction tmp array
+    // final iteration number array
     constexpr static int final_iter_nums = 2;
 };
 
