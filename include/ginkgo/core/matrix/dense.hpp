@@ -87,6 +87,8 @@ template <typename ValueType, typename IndexType>
 class SparsityCsr;
 
 
+class Empty {};
+
 /**
  * Dense is a matrix format which explicitly stores all values of the matrix.
  *
@@ -107,7 +109,11 @@ class Dense
     : public EnableLinOp<Dense<ValueType>>,
       public EnableCreateMethod<Dense<ValueType>>,
       public ConvertibleTo<Dense<next_precision<ValueType>>>,
-      public ConvertibleTo<Dense<next_precision<next_precision<ValueType>>>>,
+      public std::conditional<
+          std::is_same<next_precision<next_precision<ValueType>>,
+                       ValueType>::value,
+          Empty,
+          ConvertibleTo<Dense<next_precision<next_precision<ValueType>>>>>,
       public ConvertibleTo<Coo<ValueType, int32>>,
       public ConvertibleTo<Coo<ValueType, int64>>,
       public ConvertibleTo<Csr<ValueType, int32>>,
