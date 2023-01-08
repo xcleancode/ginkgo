@@ -45,7 +45,7 @@ int main(int argc, char* argv[])
 {
     // Some shortcuts
     using ValueType = double;
-    using MixedType = float;
+    using MixedType = gko::half;
     using IndexType = int;
     using vec = gko::matrix::Dense<ValueType>;
     using mtx = gko::matrix::Csr<ValueType, IndexType>;
@@ -69,8 +69,8 @@ int main(int argc, char* argv[])
             {"omp", [] { return gko::OmpExecutor::create(); }},
             {"cuda",
              [] {
-                 return gko::CudaExecutor::create(0, gko::OmpExecutor::create(),
-                                                  true);
+                 return gko::CudaExecutor::create(
+                     0, gko::ReferenceExecutor::create(), true);
              }},
             {"hip",
              [] {
@@ -165,6 +165,7 @@ int main(int argc, char* argv[])
             .on(exec));
     // Create multigrid factory
     std::shared_ptr<gko::LinOpFactory> multigrid_gen;
+    std::cout << "123" << std::endl;
     if (use_mixed) {
         multigrid_gen =
             mg::build()
@@ -197,11 +198,13 @@ int main(int argc, char* argv[])
                             .with_criteria(iter_stop, tol_stop)
                             .on(exec);
     }
+    std::cout << "4" << std::endl;
     std::chrono::nanoseconds gen_time(0);
     auto gen_tic = std::chrono::steady_clock::now();
     // auto solver = solver_gen->generate(A);
     auto solver = multigrid_gen->generate(A);
     exec->synchronize();
+    std::cout << "5" << std::endl;
     auto gen_toc = std::chrono::steady_clock::now();
     gen_time +=
         std::chrono::duration_cast<std::chrono::nanoseconds>(gen_toc - gen_tic);

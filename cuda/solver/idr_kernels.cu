@@ -96,10 +96,10 @@ void initialize_subspace_vectors(matrix::Dense<ValueType>* subspace_vectors,
     if (!deterministic) {
         auto gen = curand::rand_generator(std::random_device{}(),
                                           CURAND_RNG_PSEUDO_DEFAULT);
-        curand::rand_vector(
-            gen,
-            subspace_vectors->get_size()[0] * subspace_vectors->get_stride(),
-            0.0, 1.0, subspace_vectors->get_values());
+        // curand::rand_vector(
+        //     gen,
+        //     subspace_vectors->get_size()[0] * subspace_vectors->get_stride(),
+        //     0.0, 1.0, subspace_vectors->get_values());
     }
 }
 
@@ -345,7 +345,7 @@ void compute_omega(
 {
     const auto grid_dim = ceildiv(nrhs, config::warp_size);
     compute_omega_kernel<<<grid_dim, config::warp_size>>>(
-        nrhs, kappa, as_cuda_type(tht->get_const_values()),
+        nrhs, as_cuda_type(kappa), as_cuda_type(tht->get_const_values()),
         as_cuda_type(residual_norm->get_const_values()),
         as_cuda_type(omega->get_values()),
         as_cuda_type(stop_status->get_const_data()));
