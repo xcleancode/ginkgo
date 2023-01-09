@@ -91,7 +91,7 @@ constexpr int classical_overweight = 32;
  */
 using compiled_kernels = syn::value_list<int, 6>;
 
-using classical_kernels = syn::value_list<int, config::warp_size, 16, 8, 1>;
+using classical_kernels = syn::value_list<int, config::warp_size, 16, 1>;
 
 
 namespace kernel {
@@ -1108,7 +1108,7 @@ void classical_spmv(syn::value_list<int, subgroup_size>,
                     const matrix::Dense<ValueType>* alpha = nullptr,
                     const matrix::Dense<ValueType>* beta = nullptr)
 {
-    constexpr int threads_per_cu = 7;
+    constexpr int threads_per_cu = 8;
     const auto num_subgroup =
         exec->get_num_computing_units() * threads_per_cu * classical_overweight;
     const auto nsg_in_group = spmv_block_size / subgroup_size;

@@ -102,6 +102,20 @@ constexpr allocation_mode default_hip_alloc_mode =
 
 }  // namespace gko
 
+
+// after intel/llvm September'22 release, which uses major version 6, they
+// introduce another inline namespace _V1.
+#if GINKGO_DPCPP_MAJOR_VERSION >= 6
+namespace sycl {
+inline namespace _V1 {
+
+
+class queue;
+
+
+}  // namespace _V1
+}  // namespace sycl
+#else  // __LIBSYCL_MAJOR_VERSION < 6
 inline namespace cl {
 namespace sycl {
 
@@ -111,6 +125,7 @@ class queue;
 
 }  // namespace sycl
 }  // namespace cl
+#endif
 
 
 /**
@@ -1879,7 +1894,7 @@ public:
         return this->get_exec_info().device_id;
     }
 
-    ::cl::sycl::queue* get_queue() const { return queue_.get(); }
+    sycl::queue* get_queue() const { return queue_.get(); }
 
     /**
      * Get the number of devices present on the system.
@@ -1990,7 +2005,7 @@ private:
 
     template <typename T>
     using queue_manager = std::unique_ptr<T, std::function<void(T*)>>;
-    queue_manager<::cl::sycl::queue> queue_;
+    queue_manager<sycl::queue> queue_;
 };
 
 
