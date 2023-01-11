@@ -1,5 +1,5 @@
 /*******************************<GINKGO LICENSE>******************************
-Copyright (c) 2017-2022, the Ginkgo authors
+Copyright (c) 2017-2023, the Ginkgo authors
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -296,12 +296,12 @@ __device__ __forceinline__ void csr_advanced_matvec_kernel(
 
 template <typename ValueType>
 __global__
-    __launch_bounds__(default_block_size, sm_multiplier) void advanced_spmv(
-        const batch_dense::UniformBatch<const ValueType> alpha,
-        const gko::batch_csr::UniformBatch<const ValueType> a,
-        const batch_dense::UniformBatch<const ValueType> b,
-        const batch_dense::UniformBatch<const ValueType> beta,
-        const batch_dense::UniformBatch<ValueType> c)
+__launch_bounds__(default_block_size, sm_multiplier) void advanced_spmv(
+    const batch_dense::UniformBatch<const ValueType> alpha,
+    const gko::batch_csr::UniformBatch<const ValueType> a,
+    const batch_dense::UniformBatch<const ValueType> b,
+    const batch_dense::UniformBatch<const ValueType> beta,
+    const batch_dense::UniformBatch<ValueType> c)
 {
     for (size_type ibatch = blockIdx.x; ibatch < a.num_batch;
          ibatch += gridDim.x) {
@@ -479,10 +479,9 @@ __global__ void uniform_convert_to_batch_dense(
 
 
 __global__
-    __launch_bounds__(default_block_size) void check_all_diagonal_locations(
-        const int min_rows_cols, const int* const __restrict__ row_ptrs,
-        const int* const __restrict__ col_idxs,
-        bool* const __restrict__ all_diags)
+__launch_bounds__(default_block_size) void check_all_diagonal_locations(
+    const int min_rows_cols, const int* const __restrict__ row_ptrs,
+    const int* const __restrict__ col_idxs, bool* const __restrict__ all_diags)
 {
     constexpr auto warp_size = config::warp_size;
     const auto tile =

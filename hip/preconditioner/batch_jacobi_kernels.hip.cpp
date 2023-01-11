@@ -1,5 +1,5 @@
 /*******************************<GINKGO LICENSE>******************************
-Copyright (c) 2017-2022, the Ginkgo authors
+Copyright (c) 2017-2023, the Ginkgo authors
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -38,7 +38,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #include "core/matrix/batch_struct.hpp"
-//#include "hip/base/config.hip.hpp"
+// #include "hip/base/config.hip.hpp"
 #include "hip/base/math.hip.hpp"
 #include "hip/base/types.hip.hpp"
 #include "hip/components/cooperative_groups.hip.hpp"
@@ -46,7 +46,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "hip/components/thread_ids.hip.hpp"
 #include "hip/components/uninitialized_array.hip.hpp"
 #include "hip/components/warp_blas.hip.hpp"
-//#include "hip/matrix/batch_struct.hip.hpp"
+// #include "hip/matrix/batch_struct.hip.hpp"
 
 namespace gko {
 namespace kernels {
