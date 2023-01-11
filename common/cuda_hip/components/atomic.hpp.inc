@@ -192,6 +192,15 @@ __forceinline__ __device__ T atomic_add(T* __restrict__ addr, T val)
         return atomicAdd(addr, val);                 \
     }
 
+#define GKO_BIND_ATOMIC_ADD_NOT_IMPLEMENTED(ValueType) \
+    __forceinline__ __device__ ValueType atomic_add(   \
+        ValueType* __restrict__ addr, ValueType val)   \
+    {                                                  \
+        assert("The value type " #ValueType            \
+               " is not supported for atomic_add" &&   \
+               false);                                 \
+    }
+
 GKO_BIND_ATOMIC_ADD(int);
 GKO_BIND_ATOMIC_ADD(unsigned int);
 GKO_BIND_ATOMIC_ADD(unsigned long long int);
@@ -213,6 +222,8 @@ GKO_BIND_ATOMIC_ADD(double);
 // CUDA 8.0 starts suppoting 64-bit double atomicAdd on devices of compute
 // capability 6.x and higher
 GKO_BIND_ATOMIC_ADD(double);
+#else
+GKO_BIND_ATOMIC_ADD_NOT_IMPLEMENTED(double);
 #endif  // !((defined(CUDA_VERSION) && (CUDA_VERSION < 8000)) ||
         // (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 600)))
 
@@ -221,6 +232,8 @@ GKO_BIND_ATOMIC_ADD(double);
 // CUDA 10.0 starts supporting 16-bit __half floating-point atomicAdd on devices
 // of compute capability 7.x and higher.
 GKO_BIND_ATOMIC_ADD(__half);
+#else
+GKO_BIND_ATOMIC_ADD_NOT_IMPLEMENTED(__half);
 #endif  // !((defined(CUDA_VERSION) && (CUDA_VERSION < 10000)) ||
         // (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 700)))
 
@@ -232,6 +245,8 @@ GKO_BIND_ATOMIC_ADD(__half);
 // elements; the entire __half2 is not guaranteed to be atomic as a single
 // 32-bit access.
 GKO_BIND_ATOMIC_ADD(__half2);
+#else
+GKO_BIND_ATOMIC_ADD_NOT_IMPLEMENTED(__half2)
 #endif  // !((defined(CUDA_VERSION) && (CUDA_VERSION < 10000)) ||
         // (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 600)))
 
@@ -240,6 +255,7 @@ GKO_BIND_ATOMIC_ADD(__half2);
 
 
 #undef GKO_BIND_ATOMIC_ADD
+#undef GKO_BIND_ATOMIC_ADD_NOT_IMPLEMENTED
 
 
 template <typename T>
