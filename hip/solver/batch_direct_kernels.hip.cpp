@@ -1,5 +1,5 @@
 /*******************************<GINKGO LICENSE>******************************
-Copyright (c) 2017-2022, the Ginkgo authors
+Copyright (c) 2017-2023, the Ginkgo authors
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -45,7 +45,8 @@ void apply(std::shared_ptr<const HipExecutor> exec,
            matrix::BatchDense<ValueType>* const b,
            gko::log::BatchLogData<ValueType>& logdata) GKO_NOT_IMPLEMENTED;
 
-GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE(GKO_DECLARE_BATCH_DIRECT_APPLY_KERNEL);
+GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_NO_HALF(
+    GKO_DECLARE_BATCH_DIRECT_APPLY_KERNEL);
 
 
 template <typename ValueType>
@@ -55,7 +56,7 @@ void transpose_scale_copy(
     const matrix::BatchDense<ValueType>* const orig,
     matrix::BatchDense<ValueType>* const scaled) GKO_NOT_IMPLEMENTED;
 
-GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE(
+GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_NO_HALF(
     GKO_DECLARE_BATCH_DIRECT_TRANSPOSE_SCALE_COPY);
 
 
@@ -69,7 +70,7 @@ void pre_diag_scale_system_transpose(
     matrix::BatchDense<ValueType>* const a_scaled_t,
     matrix::BatchDense<ValueType>* const b_scaled_t) GKO_NOT_IMPLEMENTED;
 
-GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE(
+GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_NO_HALF(
     GKO_DECLARE_BATCH_DIRECT_PRE_DIAG_SCALE_SYSTEM_TRANSPOSE);
 
 

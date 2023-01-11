@@ -1,5 +1,5 @@
 /*******************************<GINKGO LICENSE>******************************
-Copyright (c) 2017-2022, the Ginkgo authors
+Copyright (c) 2017-2023, the Ginkgo authors
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -71,6 +71,7 @@ class BatchCsr
     : public EnableBatchLinOp<BatchCsr<ValueType, IndexType>>,
       public EnableCreateMethod<BatchCsr<ValueType, IndexType>>,
       public ConvertibleTo<BatchCsr<next_precision<ValueType>, IndexType>>,
+      public ConvertibleTo<BatchCsr<previous_precision<ValueType>, IndexType>>,
       public ConvertibleTo<BatchDense<ValueType>>,
       public BatchReadableFromMatrixData<ValueType, IndexType>,
       public BatchWritableToMatrixData<ValueType, IndexType>,
@@ -104,13 +105,21 @@ public:
         bool same_executor = this->get_executor() == result->get_executor();
         EnableBatchLinOp<BatchCsr>::move_to(result);
     }
+
     friend class BatchCsr<next_precision<ValueType>, IndexType>;
+    friend class BatchCsr<previous_precision<ValueType>, IndexType>;
 
     void convert_to(
         BatchCsr<next_precision<ValueType>, IndexType>* result) const override;
 
     void move_to(
         BatchCsr<next_precision<ValueType>, IndexType>* result) override;
+
+    void convert_to(BatchCsr<previous_precision<ValueType>, IndexType>* result)
+        const override;
+
+    void move_to(
+        BatchCsr<previous_precision<ValueType>, IndexType>* result) override;
 
     void convert_to(BatchDense<ValueType>* result) const override;
 

@@ -1,5 +1,5 @@
 /*******************************<GINKGO LICENSE>******************************
-Copyright (c) 2017-2022, the Ginkgo authors
+Copyright (c) 2017-2023, the Ginkgo authors
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -128,7 +128,7 @@ void BatchGmres<ValueType>::solver_apply(const BatchLinOp* const b,
 
 
 #define GKO_DECLARE_BATCH_GMRES(_type) class BatchGmres<_type>
-GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE(GKO_DECLARE_BATCH_GMRES);
+GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_NO_HALF(GKO_DECLARE_BATCH_GMRES);
 
 
 #define GKO_DECLARE_BATCH_GMRES_APPLY_FUNCTION(_type)                         \
@@ -143,7 +143,8 @@ GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE(GKO_DECLARE_BATCH_GMRES);
     EnableBatchSolver<BatchGmres<_type>, BatchLinOp>::apply_impl(             \
         const BatchLinOp* alpha, const BatchLinOp* b, const BatchLinOp* beta, \
         BatchLinOp* x) const
-GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE(GKO_DECLARE_BATCH_GMRES_APPLY_FUNCTION);
+GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_NO_HALF(
+    GKO_DECLARE_BATCH_GMRES_APPLY_FUNCTION);
 
 
 }  // namespace solver

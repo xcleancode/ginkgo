@@ -1,5 +1,5 @@
 /*******************************<GINKGO LICENSE>******************************
-Copyright (c) 2017-2022, the Ginkgo authors
+Copyright (c) 2017-2023, the Ginkgo authors
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -245,6 +245,25 @@ void BatchDense<ValueType>::convert_to(
 template <typename ValueType>
 void BatchDense<ValueType>::move_to(
     BatchDense<next_precision<ValueType>>* result)
+{
+    this->convert_to(result);
+}
+
+
+template <typename ValueType>
+void BatchDense<ValueType>::convert_to(
+    BatchDense<previous_precision<ValueType>>* result) const
+{
+    result->values_ = this->values_;
+    result->stride_ = this->stride_;
+    result->num_elems_per_batch_cumul_ = this->num_elems_per_batch_cumul_;
+    result->set_size(this->get_size());
+}
+
+
+template <typename ValueType>
+void BatchDense<ValueType>::move_to(
+    BatchDense<previous_precision<ValueType>>* result)
 {
     this->convert_to(result);
 }

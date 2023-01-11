@@ -1,5 +1,5 @@
 /*******************************<GINKGO LICENSE>******************************
-Copyright (c) 2017-2022, the Ginkgo authors
+Copyright (c) 2017-2023, the Ginkgo authors
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -127,7 +127,7 @@ void BatchBicgstab<ValueType>::solver_apply(const BatchLinOp* const b,
 
 
 #define GKO_DECLARE_BATCH_BICGSTAB(_type) class BatchBicgstab<_type>
-GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE(GKO_DECLARE_BATCH_BICGSTAB);
+GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_NO_HALF(GKO_DECLARE_BATCH_BICGSTAB);
 
 
 #define GKO_DECLARE_BATCH_BICGSTAB_APPLY_FUNCTIONS(_type)                     \
@@ -142,7 +142,8 @@ GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE(GKO_DECLARE_BATCH_BICGSTAB);
     EnableBatchSolver<BatchBicgstab<_type>, BatchLinOp>::apply_impl(          \
         const BatchLinOp* alpha, const BatchLinOp* b, const BatchLinOp* beta, \
         BatchLinOp* x) const
-GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE(GKO_DECLARE_BATCH_BICGSTAB_APPLY_FUNCTIONS);
+GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_NO_HALF(
+    GKO_DECLARE_BATCH_BICGSTAB_APPLY_FUNCTIONS);
 
 
 }  // namespace solver

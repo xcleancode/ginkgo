@@ -1,5 +1,5 @@
 /*******************************<GINKGO LICENSE>******************************
-Copyright (c) 2017-2022, the Ginkgo authors
+Copyright (c) 2017-2023, the Ginkgo authors
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -126,7 +126,7 @@ void apply(std::shared_ptr<const OmpExecutor> exec,
     dispatcher.apply(b, x, logdata);
 }
 
-GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE(GKO_DECLARE_BATCH_IDR_APPLY_KERNEL);
+GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_NO_HALF(GKO_DECLARE_BATCH_IDR_APPLY_KERNEL);
 
 
 }  // namespace batch_idr

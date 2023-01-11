@@ -1,5 +1,5 @@
 /*******************************<GINKGO LICENSE>******************************
-Copyright (c) 2017-2022, the Ginkgo authors
+Copyright (c) 2017-2023, the Ginkgo authors
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -76,6 +76,7 @@ class BatchDiagonal
     : public EnableBatchLinOp<BatchDiagonal<ValueType>>,
       public EnableCreateMethod<BatchDiagonal<ValueType>>,
       public ConvertibleTo<BatchDiagonal<next_precision<ValueType>>>,
+      public ConvertibleTo<BatchDiagonal<previous_precision<ValueType>>>,
       public BatchReadableFromMatrixData<ValueType, int32>,
       public BatchReadableFromMatrixData<ValueType, int64>,
       public BatchWritableToMatrixData<ValueType, int32>,
@@ -117,11 +118,17 @@ public:
     }
 
     friend class BatchDiagonal<next_precision<ValueType>>;
+    friend class BatchDiagonal<previous_precision<ValueType>>;
 
     void convert_to(
         BatchDiagonal<next_precision<ValueType>>* result) const override;
 
     void move_to(BatchDiagonal<next_precision<ValueType>>* result) override;
+
+    void convert_to(
+        BatchDiagonal<previous_precision<ValueType>>* result) const override;
+
+    void move_to(BatchDiagonal<previous_precision<ValueType>>* result) override;
 
     /**
      * Read from a COO-type matrix data object into this batch diagonal matrix.
@@ -498,8 +505,8 @@ protected:
     void apply_impl(const BatchLinOp* alpha, const BatchLinOp* b,
                     const BatchLinOp* beta, BatchLinOp* x) const override;
 
-    size_type linearize_index(const size_type batch, const size_type row) const
-        noexcept
+    size_type linearize_index(const size_type batch,
+                              const size_type row) const noexcept
     {
         if (this->get_size().stores_equal_sizes()) {
             return row + batch * std::min(this->get_size().at(0)[0],

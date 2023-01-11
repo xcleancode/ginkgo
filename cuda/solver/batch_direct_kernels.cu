@@ -1,5 +1,5 @@
 /*******************************<GINKGO LICENSE>******************************
-Copyright (c) 2017-2022, the Ginkgo authors
+Copyright (c) 2017-2023, the Ginkgo authors
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -126,7 +126,8 @@ void apply(std::shared_ptr<const CudaExecutor> exec,
     exec->free(pivot_array);
 }
 
-GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE(GKO_DECLARE_BATCH_DIRECT_APPLY_KERNEL);
+GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_NO_HALF(
+    GKO_DECLARE_BATCH_DIRECT_APPLY_KERNEL);
 
 
 template <typename ValueType>
@@ -147,7 +148,7 @@ void transpose_scale_copy(std::shared_ptr<const CudaExecutor> exec,
         as_cuda_type(scaled->get_values()));
 }
 
-GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE(
+GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_NO_HALF(
     GKO_DECLARE_BATCH_DIRECT_TRANSPOSE_SCALE_COPY);
 
 
@@ -180,7 +181,7 @@ void pre_diag_scale_system_transpose(
         as_cuda_type(b_scaled_t->get_values()));
 }
 
-GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE(
+GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE_NO_HALF(
     GKO_DECLARE_BATCH_DIRECT_PRE_DIAG_SCALE_SYSTEM_TRANSPOSE);
 
 

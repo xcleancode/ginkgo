@@ -1,5 +1,5 @@
 /*******************************<GINKGO LICENSE>******************************
-Copyright (c) 2017-2022, the Ginkgo authors
+Copyright (c) 2017-2023, the Ginkgo authors
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -77,17 +77,19 @@ class BatchCsr;
  * @ingroup BatchLinOp
  */
 template <typename ValueType = default_precision>
-class BatchDense : public EnableBatchLinOp<BatchDense<ValueType>>,
-                   public EnableCreateMethod<BatchDense<ValueType>>,
-                   public ConvertibleTo<BatchDense<next_precision<ValueType>>>,
-                   public ConvertibleTo<BatchCsr<ValueType, int32>>,
-                   public ConvertibleTo<BatchDiagonal<ValueType>>,
-                   public BatchReadableFromMatrixData<ValueType, int32>,
-                   public BatchReadableFromMatrixData<ValueType, int64>,
-                   public BatchWritableToMatrixData<ValueType, int32>,
-                   public BatchWritableToMatrixData<ValueType, int64>,
-                   public BatchTransposable,
-                   public BatchScaledIdentityAddable {
+class BatchDense
+    : public EnableBatchLinOp<BatchDense<ValueType>>,
+      public EnableCreateMethod<BatchDense<ValueType>>,
+      public ConvertibleTo<BatchDense<next_precision<ValueType>>>,
+      public ConvertibleTo<BatchDense<previous_precision<ValueType>>>,
+      public ConvertibleTo<BatchCsr<ValueType, int32>>,
+      public ConvertibleTo<BatchDiagonal<ValueType>>,
+      public BatchReadableFromMatrixData<ValueType, int32>,
+      public BatchReadableFromMatrixData<ValueType, int64>,
+      public BatchWritableToMatrixData<ValueType, int32>,
+      public BatchWritableToMatrixData<ValueType, int64>,
+      public BatchTransposable,
+      public BatchScaledIdentityAddable {
     friend class EnableCreateMethod<BatchDense>;
     friend class EnablePolymorphicObject<BatchDense, BatchLinOp>;
     friend class BatchDense<to_complex<ValueType>>;
@@ -126,11 +128,17 @@ public:
     }
 
     friend class BatchDense<next_precision<ValueType>>;
+    friend class BatchDense<previous_precision<ValueType>>;
 
     void convert_to(
         BatchDense<next_precision<ValueType>>* result) const override;
 
     void move_to(BatchDense<next_precision<ValueType>>* result) override;
+
+    void convert_to(
+        BatchDense<previous_precision<ValueType>>* result) const override;
+
+    void move_to(BatchDense<previous_precision<ValueType>>* result) override;
 
     void convert_to(BatchCsr<ValueType, index_type>* result) const override;
 

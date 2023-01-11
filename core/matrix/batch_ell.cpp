@@ -1,5 +1,5 @@
 /*******************************<GINKGO LICENSE>******************************
-Copyright (c) 2017-2022, the Ginkgo authors
+Copyright (c) 2017-2023, the Ginkgo authors
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -147,6 +147,26 @@ void BatchEll<ValueType, IndexType>::convert_to(
 template <typename ValueType, typename IndexType>
 void BatchEll<ValueType, IndexType>::move_to(
     BatchEll<next_precision<ValueType>, IndexType>* result)
+{
+    this->convert_to(result);
+}
+
+
+template <typename ValueType, typename IndexType>
+void BatchEll<ValueType, IndexType>::convert_to(
+    BatchEll<previous_precision<ValueType>, IndexType>* result) const
+{
+    result->values_ = this->values_;
+    result->col_idxs_ = this->col_idxs_;
+    result->set_size(this->get_size());
+    result->stride_ = this->get_stride();
+    result->num_stored_elems_per_row_ = this->get_num_stored_elements_per_row();
+}
+
+
+template <typename ValueType, typename IndexType>
+void BatchEll<ValueType, IndexType>::move_to(
+    BatchEll<previous_precision<ValueType>, IndexType>* result)
 {
     this->convert_to(result);
 }

@@ -1,5 +1,5 @@
 /*******************************<GINKGO LICENSE>******************************
-Copyright (c) 2017-2022, the Ginkgo authors
+Copyright (c) 2017-2023, the Ginkgo authors
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -107,6 +107,25 @@ void BatchCsr<ValueType, IndexType>::convert_to(
 template <typename ValueType, typename IndexType>
 void BatchCsr<ValueType, IndexType>::move_to(
     BatchCsr<next_precision<ValueType>, IndexType>* result)
+{
+    this->convert_to(result);
+}
+
+
+template <typename ValueType, typename IndexType>
+void BatchCsr<ValueType, IndexType>::convert_to(
+    BatchCsr<previous_precision<ValueType>, IndexType>* result) const
+{
+    result->values_ = this->values_;
+    result->col_idxs_ = this->col_idxs_;
+    result->row_ptrs_ = this->row_ptrs_;
+    result->set_size(this->get_size());
+}
+
+
+template <typename ValueType, typename IndexType>
+void BatchCsr<ValueType, IndexType>::move_to(
+    BatchCsr<previous_precision<ValueType>, IndexType>* result)
 {
     this->convert_to(result);
 }
