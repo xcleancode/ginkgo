@@ -135,8 +135,12 @@ std::shared_ptr<matrix::Csr<ValueType, IndexType>> generate_coarse(
         nnz, row_idxs.get_const_data(), col_idxs.get_const_data(),
         vals.get_const_data(), gko::lend(coarse_coo)));
     // use move_to
-    auto coarse_csr = matrix::Csr<ValueType, IndexType>::create(exec);
+    auto coarse_csr = matrix::Csr<ValueType, IndexType>::create(
+        exec, std::make_shared<
+                  typename matrix::Csr<ValueType, IndexType>::classical>());
     coarse_csr->copy_from(std::move(coarse_coo));
+    // auto half_scalar = initialize<matrix::Dense<ValueType>>({0.5}, exec);
+    // coarse_csr->scale(half_scalar.get());
     return std::move(coarse_csr);
 }
 
@@ -144,12 +148,13 @@ std::shared_ptr<matrix::Csr<ValueType, IndexType>> generate_coarse(
 }  // namespace
 
 
-template <typename ValueType, typename IndexType>
-void Pgm<ValueType, IndexType>::generate()
+template <typename ValueType, typename IndexType, typename WorkingType>
+void Pgm<ValueType, IndexType, WorkingType>::generate()
 {
-    using csr_type = matrix::Csr<ValueType, IndexType>;
-    using real_type = remove_complex<ValueType>;
+    using csr_type = matrix::Csr<WorkingType, IndexType>;
+    using real_type = remove_complex<WorkingType>;
     using weight_csr_type = remove_complex<csr_type>;
+    using fine_csr_type = matrix::Csr<ValueType, IndexType>;
     auto exec = this->get_executor();
     const auto num_rows = this->system_matrix_->get_size()[0];
     array<IndexType> strongest_neighbor(this->get_executor(), num_rows);
@@ -159,6 +164,7 @@ void Pgm<ValueType, IndexType>::generate()
     const csr_type* pgm_op =
         dynamic_cast<const csr_type*>(system_matrix_.get());
     std::shared_ptr<const csr_type> pgm_op_shared_ptr{};
+    std::cout << "converting" << std::endl;
     // If system matrix is not csr or need sorting, generate the csr.
     if (!parameters_.skip_sorting || !pgm_op) {
         pgm_op_shared_ptr = convert_to_with_sorting<csr_type>(
@@ -167,6 +173,15 @@ void Pgm<ValueType, IndexType>::generate()
         // keep the same precision data in fine_op
         this->set_fine_op(pgm_op_shared_ptr);
     }
+    std::cout << "fine" << std::endl;
+    // fine_op keeps ValueType
+    if (!dynamic_cast<const fine_csr_type*>(pgm_op)) {
+        // pgm is already sorted
+        std::shared_ptr<const fine_csr_type> op =
+            convert_to_with_sorting<fine_csr_type>(exec, pgm_op, true);
+        this->set_fine_op(op);
+    }
+    std::cout << "finished" << std::endl;
     // Initial agg = -1
     exec->run(pgm::make_fill_array(agg_.get_data(), agg_.get_num_elems(),
                                    -one<IndexType>()));
@@ -177,7 +192,7 @@ void Pgm<ValueType, IndexType>::generate()
     auto abs_mtx = pgm_op->compute_absolute();
     // abs_mtx is already real valuetype, so transpose is enough
     auto weight_mtx = gko::as<weight_csr_type>(abs_mtx->transpose());
-    auto half_scalar = initialize<matrix::Dense<real_type>>({half(0.5)}, exec);
+    auto half_scalar = initialize<matrix::Dense<real_type>>({0.5}, exec);
     auto identity = matrix::Identity<real_type>::create(exec, num_rows);
     // W = (abs_mtx + transpose(abs_mtx))/2
     abs_mtx->apply(lend(half_scalar), lend(identity), lend(half_scalar),
@@ -229,8 +244,10 @@ void Pgm<ValueType, IndexType>::generate()
 
     // Construct the coarse matrix
     // TODO: improve it
-    auto coarse_matrix = generate_coarse(exec, pgm_op, num_agg, agg_);
-
+    working_coarse_matrix_ = generate_coarse(exec, pgm_op, num_agg, agg_);
+    auto coarse_matrix =
+        share(gko::matrix::Csr<ValueType, IndexType>::create(exec));
+    coarse_matrix->copy_from(working_coarse_matrix_.get());
     this->set_multigrid_level(prolong_row_gather, coarse_matrix,
                               restrict_sparsity);
 }
@@ -238,7 +255,12 @@ void Pgm<ValueType, IndexType>::generate()
 
 #define GKO_DECLARE_PGM(_vtype, _itype) class Pgm<_vtype, _itype>
 GKO_INSTANTIATE_FOR_EACH_VALUE_AND_INDEX_TYPE(GKO_DECLARE_PGM);
-
+template class Pgm<float, int32, double>;
+template class Pgm<float, int64, double>;
+template class Pgm<half, int32, double>;
+template class Pgm<half, int64, double>;
+template class Pgm<half, int32, float>;
+template class Pgm<half, int64, float>;
 
 }  // namespace multigrid
 }  // namespace gko
