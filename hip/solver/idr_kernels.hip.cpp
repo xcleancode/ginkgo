@@ -99,10 +99,10 @@ void initialize_subspace_vectors(matrix::Dense<ValueType>* subspace_vectors,
     if (!deterministic) {
         auto gen = hiprand::rand_generator(std::random_device{}(),
                                            HIPRAND_RNG_PSEUDO_DEFAULT);
-        hiprand::rand_vector(
-            gen,
-            subspace_vectors->get_size()[0] * subspace_vectors->get_stride(),
-            0.0, 1.0, subspace_vectors->get_values());
+        // hiprand::rand_vector(
+        //     gen,
+        //     subspace_vectors->get_size()[0] * subspace_vectors->get_stride(),
+        //     0.0, 1.0, subspace_vectors->get_values());
     }
 }
 
@@ -356,7 +356,7 @@ void compute_omega(
 {
     const auto grid_dim = ceildiv(nrhs, config::warp_size);
     hipLaunchKernelGGL(HIP_KERNEL_NAME(compute_omega_kernel), grid_dim,
-                       config::warp_size, 0, 0, nrhs, kappa,
+                       config::warp_size, 0, 0, nrhs, as_hip_type(kappa),
                        as_hip_type(tht->get_const_values()),
                        as_hip_type(residual_norm->get_const_values()),
                        as_hip_type(omega->get_values()),

@@ -81,7 +81,7 @@ void sampleselect_filter(const ValueType* values, IndexType size,
     if (num_blocks > 0) {
         hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel::filter_bucket), num_blocks,
                            default_block_size, 0, 0, as_hip_type(values), size,
-                           bucket, oracles, partial_counts, out,
+                           bucket, oracles, partial_counts, as_hip_type(out),
                            items_per_thread);
     }
 }
