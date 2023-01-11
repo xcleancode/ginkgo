@@ -58,7 +58,10 @@ class __half;
 namespace std {
 
 
-inline gko::half abs(gko::half a) { return gko::half((a > 0) ? a : -a); }
+inline gko::half abs(gko::half a)
+{
+    return gko::half((a > gko::half(0)) ? a : -a);
+}
 
 inline gko::half abs(std::complex<gko::half> a)
 {

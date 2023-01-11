@@ -406,6 +406,38 @@ public:
     HALF_FRIEND_OPERATOR(*, *=)
     HALF_FRIEND_OPERATOR(/, /=)
 
+
+#define HALF_COMPARISON(_op)                                                 \
+    GKO_ATTRIBUTES friend bool operator _op(const half lhs, const half rhs)  \
+    {                                                                        \
+        return static_cast<float>(lhs) _op static_cast<float>(rhs);          \
+    }                                                                        \
+    template <typename T,                                                    \
+              typename = std::enable_if_t<!std::is_same<T, half>::value &&   \
+                                          std::is_arithmetic<T>::value>>     \
+    GKO_ATTRIBUTES friend bool operator _op(const half lhs, const T rhs)     \
+    {                                                                        \
+        return static_cast<float>(lhs) _op rhs;                              \
+    }                                                                        \
+    template <typename T,                                                    \
+              typename = std::enable_if_t<!std::is_same<T, half>::value &&   \
+                                          std::is_arithmetic<T>::value>>     \
+    GKO_ATTRIBUTES friend bool operator _op(const T lhs, const half rhs)     \
+    {                                                                        \
+        return lhs _op static_cast<float>(rhs);                              \
+    }                                                                        \
+    static_assert(true,                                                      \
+                  "This assert is used to counter the false positive extra " \
+                  "semi-colon warnings")
+
+
+    HALF_COMPARISON(<);
+    HALF_COMPARISON(>);
+    HALF_COMPARISON(<=);
+    HALF_COMPARISON(>=);
+    HALF_COMPARISON(==);
+    HALF_COMPARISON(!=);
+
     // the negative
     GKO_ATTRIBUTES half operator-() const
     {
