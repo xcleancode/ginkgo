@@ -25,11 +25,16 @@ target_sources(ginkgo
     factorization/par_ilu.cpp
     factorization/par_ilut.cpp
     factorization/symbolic.cpp
+  	log/batch_convergence.cpp
     log/convergence.cpp
     log/logger.cpp
     log/performance_hint.cpp
     log/record.cpp
     log/stream.cpp
+    matrix/batch_csr.cpp
+    matrix/batch_dense.cpp
+    matrix/batch_diagonal.cpp
+    matrix/batch_ell.cpp
     matrix/coo.cpp
     matrix/csr.cpp
     matrix/dense.cpp
@@ -45,10 +50,18 @@ target_sources(ginkgo
     matrix/row_gatherer.cpp
     multigrid/pgm.cpp
     multigrid/fixed_coarsening.cpp
+    preconditioner/batch_ilu.cpp
+    preconditioner/batch_isai.cpp
     preconditioner/isai.cpp
     preconditioner/jacobi.cpp
     reorder/rcm.cpp
     reorder/scaled_reordered.cpp
+    solver/batch_bicgstab.cpp
+    solver/batch_cg.cpp
+    solver/batch_direct.cpp
+    solver/batch_gmres.cpp
+    solver/batch_idr.cpp
+    solver/batch_richardson.cpp
     solver/bicg.cpp
     solver/bicgstab.cpp
     solver/cb_gmres.cpp

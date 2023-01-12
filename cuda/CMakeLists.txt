@@ -25,6 +25,10 @@ target_sources(ginkgo_cuda
     factorization/par_ilut_select_kernel.cu
     factorization/par_ilut_spgeam_kernel.cu
     factorization/par_ilut_sweep_kernel.cu
+    matrix/batch_csr_kernels.cu
+    matrix/batch_diagonal_kernels.cu
+    matrix/batch_dense_kernels.cu
+    matrix/batch_ell_kernels.cu
     matrix/coo_kernels.cu
     matrix/csr_kernels.cu
     matrix/dense_kernels.cu
@@ -35,12 +39,22 @@ target_sources(ginkgo_cuda
     matrix/sellp_kernels.cu
     matrix/sparsity_csr_kernels.cu
     multigrid/pgm_kernels.cu
+    preconditioner/batch_jacobi_kernels.cu
+    preconditioner/batch_identity_kernels.cu
+    preconditioner/batch_ilu_kernels.cu
+    preconditioner/batch_jacobi_kernels.cu
     preconditioner/isai_kernels.cu
     preconditioner/jacobi_advanced_apply_kernel.cu
     preconditioner/jacobi_generate_kernel.cu
     preconditioner/jacobi_kernels.cu
     preconditioner/jacobi_simple_apply_kernel.cu
     reorder/rcm_kernels.cu
+    solver/batch_bicgstab_kernels.cu
+    solver/batch_cg_kernels.cu
+    solver/batch_direct_kernels.cu
+    solver/batch_gmres_kernels.cu
+    solver/batch_idr_kernels.cu
+    solver/batch_richardson_kernels.cu
     solver/cb_gmres_kernels.cu
     solver/idr_kernels.cu
     solver/lower_trs_kernels.cu
@@ -97,6 +111,18 @@ if(CMAKE_CUDA_COMPILER_ID STREQUAL "NVIDIA")
             PRIVATE
                 $<$<COMPILE_LANGUAGE:CUDA>:--expt-extended-lambda>)
     endif()
+	if(GINKGO_CUDA_BATCH_SOLVERS_MAXREGCOUNT)
+        set_source_files_properties(
+            solver/batch_bicgstab_kernels.cu
+            solver/batch_cg_kernels.cu
+            solver/batch_gmres_kernels.cu
+            solver/batch_idr_kernels.cu
+            solver/batch_richardson_kernels.cu
+			PROPERTIES COMPILE_FLAGS "-maxrregcount ${GINKGO_CUDA_BATCH_SOLVERS_MAXREGCOUNT}")
+    endif()
+    set_source_files_properties(
+        matrix/batch_dense_kernels.cu
+        PROPERTIES COMPILE_FLAGS "--expt-extended-lambda")
 endif()
 
 target_compile_options(ginkgo_cuda PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:${GINKGO_CUDA_COMPILER_FLAGS}>)

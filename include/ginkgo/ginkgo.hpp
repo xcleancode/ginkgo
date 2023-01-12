@@ -34,11 +34,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define GKO_GINKGO_HPP_
 
 
+#include <ginkgo/batch_config.hpp>
 #include <ginkgo/config.hpp>
 
 
 #include <ginkgo/core/base/abstract_factory.hpp>
 #include <ginkgo/core/base/array.hpp>
+#include <ginkgo/core/base/batch_lin_op.hpp>
+#include <ginkgo/core/base/batch_lin_op_helpers.hpp>
 #include <ginkgo/core/base/combination.hpp>
 #include <ginkgo/core/base/composition.hpp>
 #include <ginkgo/core/base/dense_cache.hpp>
@@ -51,6 +54,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ginkgo/core/base/index_set.hpp>
 #include <ginkgo/core/base/intrinsics.hpp>
 #include <ginkgo/core/base/lin_op.hpp>
+#include <ginkgo/core/base/lin_op_helpers.hpp>
 #include <ginkgo/core/base/machine_topology.hpp>
 #include <ginkgo/core/base/math.hpp>
 #include <ginkgo/core/base/matrix_assembly_data.hpp>
@@ -88,6 +92,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ginkgo/core/factorization/par_ilu.hpp>
 #include <ginkgo/core/factorization/par_ilut.hpp>
 
+#include <ginkgo/core/log/batch_convergence.hpp>
 #include <ginkgo/core/log/convergence.hpp>
 #include <ginkgo/core/log/logger.hpp>
 #include <ginkgo/core/log/papi.hpp>
@@ -95,6 +100,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ginkgo/core/log/record.hpp>
 #include <ginkgo/core/log/stream.hpp>
 
+#include <ginkgo/core/matrix/batch_csr.hpp>
+#include <ginkgo/core/matrix/batch_dense.hpp>
+#include <ginkgo/core/matrix/batch_diagonal.hpp>
+#include <ginkgo/core/matrix/batch_ell.hpp>
+#include <ginkgo/core/matrix/batch_identity.hpp>
 #include <ginkgo/core/matrix/coo.hpp>
 #include <ginkgo/core/matrix/csr.hpp>
 #include <ginkgo/core/matrix/dense.hpp>
@@ -113,6 +123,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ginkgo/core/multigrid/multigrid_level.hpp>
 #include <ginkgo/core/multigrid/pgm.hpp>
 
+#include <ginkgo/core/preconditioner/batch_ilu.hpp>
+#include <ginkgo/core/preconditioner/batch_isai.hpp>
+#include <ginkgo/core/preconditioner/batch_jacobi.hpp>
 #include <ginkgo/core/preconditioner/ic.hpp>
 #include <ginkgo/core/preconditioner/ilu.hpp>
 #include <ginkgo/core/preconditioner/isai.hpp>
@@ -122,6 +135,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ginkgo/core/reorder/reordering_base.hpp>
 #include <ginkgo/core/reorder/scaled_reordered.hpp>
 
+#include <ginkgo/core/solver/batch_bicgstab.hpp>
+#include <ginkgo/core/solver/batch_cg.hpp>
+#include <ginkgo/core/solver/batch_direct.hpp>
+#include <ginkgo/core/solver/batch_gmres.hpp>
+#include <ginkgo/core/solver/batch_idr.hpp>
+#include <ginkgo/core/solver/batch_richardson.hpp>
+#include <ginkgo/core/solver/batch_solver.hpp>
 #include <ginkgo/core/solver/bicg.hpp>
 #include <ginkgo/core/solver/bicgstab.hpp>
 #include <ginkgo/core/solver/cb_gmres.hpp>
@@ -138,6 +158,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ginkgo/core/solver/triangular.hpp>
 #include <ginkgo/core/solver/workspace.hpp>
 
+#include <ginkgo/core/stop/batch_stop_enum.hpp>
 #include <ginkgo/core/stop/combined.hpp>
 #include <ginkgo/core/stop/criterion.hpp>
 #include <ginkgo/core/stop/iteration.hpp>

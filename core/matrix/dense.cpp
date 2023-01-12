@@ -50,6 +50,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ginkgo/core/matrix/ell.hpp>
 #include <ginkgo/core/matrix/fbcsr.hpp>
 #include <ginkgo/core/matrix/hybrid.hpp>
+#include <ginkgo/core/matrix/identity.hpp>
 #include <ginkgo/core/matrix/sellp.hpp>
 #include <ginkgo/core/matrix/sparsity_csr.hpp>
 
@@ -73,6 +74,7 @@ GKO_REGISTER_OPERATION(fill, dense::fill);
 GKO_REGISTER_OPERATION(scale, dense::scale);
 GKO_REGISTER_OPERATION(inv_scale, dense::inv_scale);
 GKO_REGISTER_OPERATION(add_scaled, dense::add_scaled);
+GKO_REGISTER_OPERATION(add_scale, dense::add_scale);
 GKO_REGISTER_OPERATION(sub_scaled, dense::sub_scaled);
 GKO_REGISTER_OPERATION(add_scaled_diag, dense::add_scaled_diag);
 GKO_REGISTER_OPERATION(sub_scaled_diag, dense::sub_scaled_diag);
@@ -136,12 +138,21 @@ template <typename ValueType>
 void Dense<ValueType>::apply_impl(const LinOp* alpha, const LinOp* b,
                                   const LinOp* beta, LinOp* x) const
 {
-    precision_dispatch_real_complex<ValueType>(
-        [this](auto dense_alpha, auto dense_b, auto dense_beta, auto dense_x) {
-            this->get_executor()->run(dense::make_apply(
-                dense_alpha, this, dense_b, dense_beta, dense_x));
-        },
-        alpha, b, beta, x);
+    if (auto ib = dynamic_cast<const Identity<ValueType>*>(b)) {
+        if (auto xdense = dynamic_cast<Dense<ValueType>*>(x)) {
+            xdense->add_scale(alpha, this, beta);
+        } else {
+            GKO_NOT_SUPPORTED(x);
+        }
+    } else {
+        precision_dispatch_real_complex<ValueType>(
+            [this](auto dense_alpha, auto dense_b, auto dense_beta,
+                   auto dense_x) {
+                this->get_executor()->run(dense::make_apply(
+                    dense_alpha, this, dense_b, dense_beta, dense_x));
+            },
+            alpha, b, beta, x);
+    }
 }
 
 
@@ -301,6 +312,40 @@ void Dense<ValueType>::add_scaled_impl(const LinOp* alpha, const LinOp* b)
                 make_temporary_conversion<ValueType>(alpha).get(),
                 make_temporary_conversion<ValueType>(b).get(), this));
         }
+    }
+}
+
+
+template <typename ValueType>
+void Dense<ValueType>::add_scale(const LinOp* const alpha, const LinOp* const a,
+                                 const LinOp* const beta)
+{
+    GKO_ASSERT_EQUAL_ROWS(alpha, dim<2>(1, 1));
+    GKO_ASSERT_EQUAL_ROWS(beta, dim<2>(1, 1));
+    if (alpha->get_size()[1] != 1) {
+        // different alpha/beta for each column
+        GKO_ASSERT_EQUAL_COLS(this, alpha);
+        GKO_ASSERT_EQUAL_COLS(this, beta);
+    }
+    GKO_ASSERT_EQUAL_DIMENSIONS(this, a);
+    auto exec = this->get_executor();
+    auto alphac = make_temporary_clone(exec, alpha);
+    auto betac = make_temporary_clone(exec, beta);
+    auto ac = make_temporary_clone(exec, a);
+    if (dynamic_cast<const ConvertibleTo<Dense<>>*>(alpha) &&
+        is_complex<ValueType>()) {
+        exec->run(dense::make_add_scale(
+            make_temporary_conversion<remove_complex<ValueType>>(alphac.get())
+                .get(),
+            make_temporary_conversion<to_complex<ValueType>>(ac.get()).get(),
+            make_temporary_conversion<remove_complex<ValueType>>(betac.get())
+                .get(),
+            dynamic_cast<complex_type*>(this)));
+    } else {
+        exec->run(dense::make_add_scale(
+            make_temporary_conversion<ValueType>(alphac.get()).get(),
+            make_temporary_conversion<ValueType>(ac.get()).get(),
+            make_temporary_conversion<ValueType>(betac.get()).get(), this));
     }
 }
 
@@ -1674,4 +1719,46 @@ GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE(GKO_DECLARE_DENSE_MATRIX);
 
 
 }  // namespace matrix
+
+
+#define GKO_DECLARE_CONCATENATE_DENSE_MATRIX(ValueType)                   \
+    std::unique_ptr<matrix::Dense<ValueType>> concatenate_dense_matrices( \
+        std::shared_ptr<const Executor> exec,                             \
+        const std::vector<std::unique_ptr<matrix::Dense<ValueType>>>&     \
+            matrices)
+
+template <typename ValueType>
+GKO_DECLARE_CONCATENATE_DENSE_MATRIX(ValueType)
+{
+    using mtx_type = matrix::Dense<ValueType>;
+    if (matrices.size() == 0) {
+        return mtx_type::create(exec);
+    }
+    size_type total_rows = 0;
+    const size_type ncols = matrices[0]->get_size()[1];
+    for (size_type imat = 0; imat < matrices.size(); imat++) {
+        GKO_ASSERT_EQUAL_COLS(matrices[0], matrices[imat]);
+        total_rows += matrices[imat]->get_size()[0];
+    }
+    auto temp = mtx_type::create(exec->get_master(), dim<2>(total_rows, ncols));
+    size_type roffset = 0;
+    for (size_type im = 0; im < matrices.size(); im++) {
+        auto imatrix = mtx_type::create(exec->get_master());
+        imatrix->copy_from(matrices[im].get());
+        for (size_type irow = 0; irow < imatrix->get_size()[0]; irow++) {
+            for (size_type icol = 0; icol < ncols; icol++) {
+                temp->at(irow + roffset, icol) = imatrix->at(irow, icol);
+            }
+        }
+        roffset += imatrix->get_size()[0];
+    }
+    assert(roffset == total_rows);
+    auto outm = mtx_type::create(exec);
+    outm->copy_from(temp.get());
+    return outm;
+}
+
+GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE(GKO_DECLARE_CONCATENATE_DENSE_MATRIX);
+
+
 }  // namespace gko

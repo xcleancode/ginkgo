@@ -53,7 +53,9 @@ namespace formats {
 
 
 std::string available_format =
-    "coo, csr, ell, ell-mixed, sellp, hybrid, hybrid0, hybrid25, hybrid33, "
+    "batch_csr,batch_ell,coo, csr, ell, ell-mixed, sellp, hybrid, hybrid0, "
+    "hybrid25, "
+    "hybrid33, "
     "hybrid40, "
     "hybrid60, hybrid80, hybridlimit0, hybridlimit25, hybridlimit33, "
     "hybridminstorage"
@@ -78,6 +80,15 @@ std::string format_description =
     "     Irregular Sparse Matrices.\n"
     "csr: Compressed Sparse Row storage. Ginkgo implementation with\n"
     "     automatic strategy.\n"
+    "batch_csr: An optimized storage format for batch matrices with the same "
+    "sparsity pattern\n"
+    "batch_ell: An ELLPACK storage format optimized for batch matrices with "
+    "the same sparsity pattern\n"
+    "coo: Coordinate storage. The CUDA kernel uses the load-balancing approach "
+    "suggested in Flegar et al.: Overcoming Load Imbalance for Irregular "
+    "Sparse Matrices.\n"
+    "csr: Compressed Sparse Row storage. Ginkgo implementation with automatic "
+    "strategy.\n"
     "csrc: Ginkgo's CSR implementation with automatic stategy.\n"
     "csri: Ginkgo's CSR implementation with inbalance strategy.\n"
     "csrm: Ginkgo's CSR implementation with merge_path strategy.\n"
@@ -145,7 +156,7 @@ std::string format_command =
 
 
 // the formats command-line argument
-DEFINE_string(formats, "coo", formats::format_command.c_str());
+DEFINE_string(formats, "batch_csr", formats::format_command.c_str());
 
 DEFINE_int64(ell_imbalance_limit, 100,
              "Maximal storage overhead above which ELL benchmarks will be "
@@ -158,6 +169,51 @@ namespace formats {
 // some shortcuts
 using hybrid = gko::matrix::Hybrid<etype, itype>;
 using csr = gko::matrix::Csr<etype, itype>;
+
+/**
+ * Creates a Ginkgo matrix from the intermediate data representation format
+ * gko::matrix_data.
+ *
+ * @param exec  the executor where the matrix will be put
+ * @param data  the data represented in the intermediate representation format
+ *
+ * @tparam MatrixType  the Ginkgo matrix type (such as `gko::matrix::Csr<>`)
+ *
+ * @return a `unique_pointer` to the created matrix
+ */
+template <typename MatrixType>
+std::unique_ptr<MatrixType> read_batch_matrix_from_data(
+    std::shared_ptr<const gko::Executor> exec, const int num_duplications,
+    const gko::matrix_data<etype>& data)
+{
+    using FormatBaseType = typename MatrixType::unbatch_type;
+    auto out_mat = FormatBaseType::create(exec);
+    out_mat->read(data);
+    auto mat = MatrixType::create(exec, num_duplications, out_mat.get());
+    return mat;
+}
+
+/**
+ * Creates a Ginkgo matrix from the intermediate data representation format
+ * gko::matrix_data.
+ *
+ * @param exec  the executor where the matrix will be put
+ * @param data  the data represented in the intermediate representation format
+ *
+ * @tparam MatrixType  the Ginkgo matrix type (such as `gko::matrix::Csr<>`)
+ *
+ * @return a `unique_pointer` to the created matrix
+ */
+template <typename MatrixType>
+std::unique_ptr<MatrixType> read_batch_matrix_from_batch_data(
+    std::shared_ptr<const gko::Executor> exec, const int num_duplications,
+    const std::vector<gko::matrix_data<etype>>& data)
+{
+    auto single_batch = MatrixType::create(exec);
+    single_batch->read(data);
+    auto mat = MatrixType::create(exec, num_duplications, single_batch.get());
+    return mat;
+}
 
 /**
  * Creates a Ginkgo matrix from the intermediate data representation format
@@ -262,6 +318,32 @@ void check_ell_admissibility(const gko::matrix_data<etype, itype>& data)
         mat->read(data);                                              \
         return mat;                                                   \
     }
+
+
+const std::map<std::string, std::function<std::unique_ptr<gko::BatchLinOp>(
+                                std::shared_ptr<const gko::Executor>, const int,
+                                const std::vector<gko::matrix_data<etype>>&)>>
+    batch_matrix_factory2{
+        {"batch_csr",
+         read_batch_matrix_from_batch_data<gko::matrix::BatchCsr<etype>>},
+        {"batch_ell",
+         read_batch_matrix_from_batch_data<gko::matrix::BatchEll<etype>>},
+        {"batch_dense",
+         read_batch_matrix_from_batch_data<gko::matrix::BatchDense<etype>>},
+        {"batch_diagonal",
+         read_batch_matrix_from_batch_data<gko::matrix::BatchDiagonal<etype>>}};
+
+
+const std::map<std::string, std::function<std::unique_ptr<gko::BatchLinOp>(
+                                std::shared_ptr<const gko::Executor>, const int,
+                                const gko::matrix_data<etype>&)>>
+    batch_matrix_factory{
+        {"batch_ell",
+         read_batch_matrix_from_data<gko::matrix::BatchEll<etype>>},
+        {"batch_csr",
+         read_batch_matrix_from_data<gko::matrix::BatchCsr<etype>>},
+        {"batch_dense",
+         read_batch_matrix_from_data<gko::matrix::BatchDense<etype>>}};
 
 
 // clang-format off

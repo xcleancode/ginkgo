@@ -152,6 +152,8 @@ void initialize_argument_parsing(int* argc, char** argv[], std::string& header,
     gflags::ParseCommandLineFlags(argc, argv, true);
 }
 
+using size_type = gko::size_type;
+
 /**
  * Print general benchmark informations using the common available parameters
  *
@@ -327,6 +329,9 @@ std::shared_ptr<gko::Executor> get_executor(bool use_gpu_timer)
 template <typename ValueType>
 using vec = gko::matrix::Dense<ValueType>;
 
+template <typename ValueType>
+using batch_vec = gko::matrix::BatchDense<ValueType>;
+
 
 // Create a matrix with value indices s[i, j] = sin(i)
 template <typename ValueType>
@@ -362,6 +367,44 @@ create_matrix_sin(std::shared_ptr<const gko::Executor> exec, gko::dim<2> size)
     }
     auto res = vec<ValueType>::create(exec);
     h_res->move_to(res.get());
+    return res;
+}
+
+
+template <typename ValueType, typename RandomEngine>
+std::unique_ptr<batch_vec<ValueType>> create_batch_matrix(
+    std::shared_ptr<const gko::Executor> exec, const gko::batch_dim<2>& size,
+    RandomEngine& engine)
+{
+    GKO_ASSERT(size.stores_equal_sizes());
+    auto res = batch_vec<ValueType>::create(exec);
+    auto num_batch_entries = size.get_num_batch_entries();
+    std::vector<gko::matrix_data<ValueType>> data{};
+    for (gko::size_type i = 0; i < num_batch_entries; ++i) {
+        data.emplace_back(gko::matrix_data<ValueType>(
+            size.at(0),
+            std::uniform_real_distribution<gko::remove_complex<ValueType>>(-1.0,
+                                                                           1.0),
+            engine));
+    }
+    res->read(data);
+    return res;
+}
+
+
+template <typename ValueType>
+std::unique_ptr<batch_vec<ValueType>> create_batch_matrix(
+    std::shared_ptr<const gko::Executor> exec, const gko::batch_dim<2>& size,
+    ValueType value)
+{
+    GKO_ASSERT(size.stores_equal_sizes());
+    auto res = batch_vec<ValueType>::create(exec);
+    auto num_batch_entries = size.get_num_batch_entries();
+    std::vector<gko::matrix_data<ValueType>> data{};
+    for (gko::size_type i = 0; i < num_batch_entries; ++i) {
+        data.emplace_back(gko::matrix_data<ValueType>(size.at(0), value));
+    }
+    res->read(data);
     return res;
 }
 
@@ -416,9 +459,35 @@ std::unique_ptr<vec<ValueType>> create_vector(
 
 // utilities for computing norms and residuals
 template <typename ValueType>
+ValueType get_norm(const batch_vec<ValueType>* norm, size_type batch)
+{
+    return clone(norm->get_executor()->get_master(), norm)->at(batch, 0, 0);
+}
+
+
+// utilities for computing norms and residuals
+template <typename ValueType>
 ValueType get_norm(const vec<ValueType>* norm)
 {
     return norm->get_executor()->copy_val_to_host(norm->get_const_values());
+}
+
+
+template <typename ValueType>
+std::vector<gko::remove_complex<ValueType>> compute_norm2(
+    const batch_vec<ValueType>* b)
+{
+    auto exec = b->get_executor();
+    auto nbatch = b->get_num_batch_entries();
+    auto b_norm =
+        gko::batch_initialize<batch_vec<gko::remove_complex<ValueType>>>(
+            nbatch, {0.0}, exec);
+    b->compute_norm2(lend(b_norm));
+    std::vector<gko::remove_complex<ValueType>> vec_norm{};
+    for (size_type i = 0; i < nbatch; ++i) {
+        vec_norm.push_back(get_norm(lend(b_norm), i));
+    }
+    return std::move(vec_norm);
 }
 
 
@@ -450,6 +519,22 @@ gko::remove_complex<ValueType> compute_direct_error(const gko::LinOp* solver,
 
 
 template <typename ValueType>
+std::vector<gko::remove_complex<ValueType>> compute_batch_residual_norm(
+    const gko::BatchLinOp* system_matrix, const batch_vec<ValueType>* b,
+    const batch_vec<ValueType>* x)
+{
+    auto exec = system_matrix->get_executor();
+    auto nbatch = b->get_num_batch_entries();
+    auto one = gko::batch_initialize<batch_vec<ValueType>>(nbatch, {1.0}, exec);
+    auto neg_one =
+        gko::batch_initialize<batch_vec<ValueType>>(nbatch, {-1.0}, exec);
+    auto res = clone(b);
+    system_matrix->apply(lend(one), lend(x), lend(neg_one), lend(res));
+    return compute_norm2(lend(res));
+}
+
+
+template <typename ValueType>
 gko::remove_complex<ValueType> compute_residual_norm(
     const gko::LinOp* system_matrix, const vec<ValueType>* b,
     const vec<ValueType>* x)
@@ -460,6 +545,42 @@ gko::remove_complex<ValueType> compute_residual_norm(
     auto res = clone(b);
     system_matrix->apply(lend(one), lend(x), lend(neg_one), lend(res));
     return compute_norm2(lend(res));
+}
+
+
+template <typename ValueType>
+std::vector<gko::remove_complex<ValueType>> compute_batch_max_relative_norm2(
+    batch_vec<ValueType>* result, const batch_vec<ValueType>* answer)
+{
+    using rc_vtype = gko::remove_complex<ValueType>;
+    auto exec = answer->get_executor();
+    auto nbatch = result->get_num_batch_entries();
+    auto answer_norm = batch_vec<rc_vtype>::create(
+        exec,
+        gko::batch_dim<2>(nbatch, gko::dim<2>(1, answer->get_size().at(0)[1])));
+    answer->compute_norm2(lend(answer_norm));
+    auto neg_one =
+        gko::batch_initialize<batch_vec<ValueType>>(nbatch, {-1.0}, exec);
+    result->add_scaled(lend(neg_one), lend(answer));
+    auto absolute_norm = batch_vec<rc_vtype>::create(
+        exec,
+        gko::batch_dim<2>(nbatch, gko::dim<2>(1, result->get_size().at(0)[1])));
+    result->compute_norm2(lend(absolute_norm));
+    auto host_answer_norm =
+        clone(answer_norm->get_executor()->get_master(), answer_norm);
+    auto host_absolute_norm =
+        clone(absolute_norm->get_executor()->get_master(), absolute_norm);
+    std::vector<rc_vtype> max_relative_norm2(nbatch, rc_vtype(0.0));
+    for (gko::size_type b = 0; b < host_answer_norm->get_num_batch_entries();
+         b++) {
+        for (gko::size_type i = 0; i < host_answer_norm->get_size().at(0)[1];
+             i++) {
+            max_relative_norm2[b] = std::max(
+                host_absolute_norm->at(b, 0, i) / host_answer_norm->at(b, 0, i),
+                max_relative_norm2[b]);
+        }
+    }
+    return max_relative_norm2;
 }
 
 
@@ -658,6 +779,11 @@ private:
             return cur_it >= min_it &&
                    (cur_it >= max_it ||
                     managed_timer.get_total_time() >= max_runtime);
+        }
+
+        bool is_last_iteration() const
+        {
+            return cur_it >= min_it && cur_it == max_it - 1;
         }
     };
 

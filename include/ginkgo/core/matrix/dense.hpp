@@ -773,6 +773,20 @@ public:
     void add_scaled(const LinOp* alpha, const LinOp* b);
 
     /**
+     * Adds `a` scaled by `alpha` to the matrix scaled by `beta`:
+     * this <- alpha * a + beta * this.
+     *
+     * @param alpha  If alpha is 1x1 Dense matrix, the entire matrix a is scaled
+     *               by alpha. If it is a Dense row vector of values,
+     *               then i-th column of a is scaled with the i-th
+     *               element of alpha (the number of columns of alpha has to
+     *               match the number of columns of the matrix).
+     * @param a  A matrix of the same dimension as this one.
+     * @param beta  Scalar(s) for multiplying this matrix; same size as alpha.
+     */
+    void add_scale(const LinOp* alpha, const LinOp* a, const LinOp* beta);
+
+    /**
      * Subtracts `b` scaled by `alpha` fron the matrix (aka: BLAS axpy).
      *
      * @param alpha  If alpha is 1x1 Dense matrix, b is scaled
@@ -1440,6 +1454,12 @@ std::unique_ptr<Matrix> initialize(
                               std::move(exec),
                               std::forward<TArgs>(create_args)...);
 }
+
+
+template <typename ValueType>
+std::unique_ptr<matrix::Dense<ValueType>> concatenate_dense_matrices(
+    std::shared_ptr<const Executor> exec,
+    const std::vector<std::unique_ptr<matrix::Dense<ValueType>>>& matrices);
 
 
 }  // namespace gko
