@@ -1,5 +1,5 @@
 /*******************************<GINKGO LICENSE>******************************
-Copyright (c) 2017-2022, the Ginkgo authors
+Copyright (c) 2017-2023, the Ginkgo authors
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -181,6 +181,26 @@ inline gko::batch_dense::UniformBatch<const ValueType> maybe_null_batch_struct(
     }
 }
 
+/**
+ * Generates an immutable uniform batch struct from a batch of csr matrices
+ * that may be null.
+ */
+template <typename ValueType>
+inline gko::batch_csr::UniformBatch<const ValueType> maybe_null_batch_struct(
+    const matrix::BatchCsr<ValueType>* const op)
+{
+    if (op) {
+        return {op->get_const_values(),
+                op->get_const_col_idxs(),
+                op->get_const_row_ptrs(),
+                op->get_num_batch_entries(),
+                static_cast<int>(op->get_size().at(0)[0]),
+                static_cast<int>(op->get_num_stored_elements() /
+                                 op->get_num_batch_entries())};
+    } else {
+        return {nullptr, nullptr, nullptr, 0, 0, 0};
+    }
+}
 
 }  // namespace host
 }  // namespace kernels

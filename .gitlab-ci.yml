@@ -96,7 +96,7 @@ build/cuda92/nompi/gcc/all/release/shared:
   variables:
     BUILD_OMP: "ON"
     BUILD_CUDA: "ON"
-    BUILD_HIP: "ON"
+    BUILD_HIP: "OFF"
     BUILD_TYPE: "Release"
     RUN_EXAMPLES: "ON"
     CUDA_ARCH: 61
@@ -421,32 +421,16 @@ build/cuda114/nompi/gcc/cuda/debug/shared:
 #     BUILD_TYPE: "Debug"
 #     FAST_TESTS: "ON"
 
-build/amd/openmpi/clang/rocm40/release/static:
-  extends:
-    - .build_and_test_template
-    - .default_variables
-    - .quick_test_condition
-    - .use_gko-rocm40-openmpi-gnu8-llvm50
-  variables:
-    C_COMPILER: "clang"
-    CXX_COMPILER: "clang++"
-    BUILD_OMP: "ON"
-    BUILD_HIP: "ON"
-    BUILD_MPI: "ON"
-    MPI_AS_ROOT: "ON"
-    BUILD_TYPE: "Release"
-    BUILD_SHARED_LIBS: "OFF"
-
-test/amd/openmpi/clang/rocm40/release/static:
-  extends:
-    - .build_and_test_template
-    - .default_variables
-    - .quick_test_condition
-    - .use_gko-rocm40-openmpi-gnu8-llvm50
-  variables:
-    USE_NAME: "amd-openmpi-clang-${CI_PIPELINE_ID}"
-  dependencies: null
-  needs: [ "build/amd/openmpi/clang/rocm40/release/static" ]
+# test/amd/openmpi/clang/rocm40/release/static:
+#   extends:
+#     - .build_and_test_template
+#     - .default_variables
+#     - .quick_test_condition
+#     - .use_gko-rocm40-openmpi-gnu8-llvm50
+#   variables:
+#     USE_NAME: "amd-openmpi-clang-${CI_PIPELINE_ID}"
+#   dependencies: null
+#   needs: [ "build/amd/openmpi/clang/rocm40/release/static" ]
 
 # ROCm 4.5 and friends
 build/amd/nompi/gcc/rocm45/release/shared:

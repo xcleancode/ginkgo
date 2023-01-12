@@ -1,5 +1,5 @@
 /*******************************<GINKGO LICENSE>******************************
-Copyright (c) 2017-2022, the Ginkgo authors
+Copyright (c) 2017-2023, the Ginkgo authors
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -30,7 +30,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************<GINKGO LICENSE>*******************************/
 
-#include <ginkgo/core/matrix/batch_ell.hpp>
+#include "core/matrix/batch_ell_kernels.hpp"
 
 
 #include <random>
@@ -42,10 +42,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ginkgo/core/base/exception.hpp>
 #include <ginkgo/core/base/executor.hpp>
 #include <ginkgo/core/matrix/batch_dense.hpp>
+#include <ginkgo/core/matrix/batch_ell.hpp>
 #include <ginkgo/core/matrix/dense.hpp>
 
 
-#include "core/matrix/batch_ell_kernels.hpp"
 #include "core/test/utils.hpp"
 #include "core/test/utils/batch.hpp"
 #include "test/utils/executor.hpp"

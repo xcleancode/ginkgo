@@ -1,5 +1,5 @@
 /*******************************<GINKGO LICENSE>******************************
-Copyright (c) 2017-2022, the Ginkgo authors
+Copyright (c) 2017-2023, the Ginkgo authors
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -36,6 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <ginkgo/core/matrix/batch_identity.hpp>
 #include <ginkgo/core/preconditioner/batch_ilu.hpp>
+#include <ginkgo/core/preconditioner/batch_ilu_isai.hpp>
 #include <ginkgo/core/preconditioner/batch_isai.hpp>
 #include <ginkgo/core/preconditioner/batch_jacobi.hpp>
 
@@ -103,6 +104,8 @@ using DeviceValueType = ValueType;
 #include "reference/matrix/batch_struct.hpp"
 #include "reference/preconditioner/batch_identity.hpp"
 #include "reference/preconditioner/batch_ilu.hpp"
+#include "reference/preconditioner/batch_ilu_isai.hpp"
+#include "reference/preconditioner/batch_isai.hpp"
 #include "reference/preconditioner/batch_jacobi.hpp"
 #include "reference/stop/batch_criteria.hpp"
 
@@ -208,21 +211,52 @@ public:
                 x_b);
         } else if (auto prec = dynamic_cast<
                        const preconditioner::BatchIsai<value_type>*>(precon_)) {
-            auto approx_inv =
-                device::get_batch_struct(prec->get_const_approximate_inverse());
-            // TODO: Define device preconditioners, add the includes to files
-            //  like cuda/preconditioner/batch_preconditioners.cuh, and add a
-            //  dispatch.
-            GKO_NOT_IMPLEMENTED;
+            const auto approx_inv = device::get_batch_struct(
+                prec->get_const_approximate_inverse().get());
+
+            dispatch_on_stop(logger, amat,
+                             device::batch_isai<device_value_type>(approx_inv),
+                             b_b, x_b);
+
         } else if (auto prec = dynamic_cast<
                        const preconditioner::BatchIlu<value_type>*>(precon_)) {
-            const auto factorized_mat =
-                device::get_batch_struct(prec->get_const_factorized_matrix());
+            const auto factorized_mat = device::get_batch_struct(
+                prec->get_const_factorized_matrix().get());
             const auto diag_locs = prec->get_const_diag_locations();
 
             dispatch_on_stop(
                 logger, amat,
                 device::batch_ilu<device_value_type>(factorized_mat, diag_locs),
+                b_b, x_b);
+
+        } else if (auto prec = dynamic_cast<
+                       const preconditioner::BatchIluIsai<value_type>*>(
+                       precon_)) {
+            const auto l =
+                device::get_batch_struct(prec->get_const_lower_factor().get());
+            const auto u =
+                device::get_batch_struct(prec->get_const_upper_factor().get());
+            const auto l_isai = device::get_batch_struct(
+                prec->get_const_lower_factor_isai().get());
+            const auto u_isai = device::get_batch_struct(
+                prec->get_const_upper_factor_isai().get());
+            const auto mult_inv = device::maybe_null_batch_struct(
+                prec->get_const_upper_factor_isai().get());
+            const auto iter_mat_lower_solve = device::maybe_null_batch_struct(
+                prec->get_const_iteration_matrix_lower_solve().get());
+            const auto iter_mat_upper_solve = device::maybe_null_batch_struct(
+                prec->get_const_iteration_matrix_upper_solve().get());
+
+            preconditioner::batch_ilu_isai_apply apply_type =
+                prec->get_apply_type();
+
+            const int num_relaxation_steps = prec->get_num_relaxation_steps();
+
+            dispatch_on_stop(
+                logger, amat,
+                device::batch_ilu_isai<device_value_type>(
+                    l, u, l_isai, u_isai, mult_inv, iter_mat_lower_solve,
+                    iter_mat_upper_solve, apply_type, num_relaxation_steps),
                 b_b, x_b);
 
         } else {

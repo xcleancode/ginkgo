@@ -1,5 +1,5 @@
 /*******************************<GINKGO LICENSE>******************************
-Copyright (c) 2017-2022, the Ginkgo authors
+Copyright (c) 2017-2023, the Ginkgo authors
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -127,16 +127,20 @@ public:
                 as<BatchTransposable>(this->system_matrix_)->conj_transpose()));
     }
 
-    const matrix::BatchCsr<ValueType, IndexType>* get_const_factorized_matrix()
-        const
+    std::shared_ptr<const matrix::BatchCsr<ValueType, IndexType>>
+    get_const_factorized_matrix() const
     {
-        return mat_factored_.get();
+        return mat_factored_;
     }
 
     const IndexType* get_const_diag_locations() const
     {
         return diag_locations_.get_const_data();
     }
+
+    std::pair<std::shared_ptr<const matrix::BatchCsr<ValueType, IndexType>>,
+              std::shared_ptr<const matrix::BatchCsr<ValueType, IndexType>>>
+    generate_split_factors_from_factored_matrix() const;
 
 protected:
     /**
@@ -163,16 +167,14 @@ protected:
           system_matrix_{system_matrix}
     {
         GKO_ASSERT_BATCH_HAS_SQUARE_MATRICES(system_matrix);
-        this->generate_precond(lend(system_matrix));
+        this->generate_precond();
     }
 
     /**
      * Generates the preconditoner.
      *
-     * @param system_matrix  the source matrix used to generate the
-     *                       preconditioner
      */
-    void generate_precond(const BatchLinOp* system_matrix);
+    void generate_precond();
 
     // Since there is no guarantee that the complete generation of the
     // preconditioner would occur outside the solver kernel, that is in the
@@ -192,6 +194,8 @@ protected:
 
 
 private:
+    // Note: Storing the system matrix is necessary because it is being used in
+    // the transpose and conjugate transpose.
     std::shared_ptr<const BatchLinOp> system_matrix_;
     std::shared_ptr<matrix::BatchCsr<ValueType, IndexType>> mat_factored_;
     array<IndexType> diag_locations_;

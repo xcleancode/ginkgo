@@ -1,5 +1,5 @@
 /*******************************<GINKGO LICENSE>******************************
-Copyright (c) 2017-2022, the Ginkgo authors
+Copyright (c) 2017-2023, the Ginkgo authors
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -99,8 +99,9 @@ protected:
         auto prec = prec_fact->generate(mtx);
         auto d_prec = d_prec_fact->generate(d_mtx);
 
-        const auto factorized_mat = prec->get_const_factorized_matrix();
-        const auto d_factorized_mat = d_prec->get_const_factorized_matrix();
+        const auto factorized_mat = prec->get_const_factorized_matrix().get();
+        const auto d_factorized_mat =
+            d_prec->get_const_factorized_matrix().get();
         const auto tol = 5000 * r<value_type>::value;
         GKO_ASSERT_BATCH_MTX_NEAR(factorized_mat, d_factorized_mat, tol);
     }
@@ -117,7 +118,7 @@ protected:
                              .on(ref);
         auto prec = prec_fact->generate(mtx);
 
-        const auto factorized_mat = prec->get_const_factorized_matrix();
+        const auto factorized_mat = prec->get_const_factorized_matrix().get();
         const auto diag_locs = prec->get_const_diag_locations();
 
         auto d_mtx = gko::share(gko::clone(exec, mtx.get()));
@@ -128,7 +129,8 @@ protected:
                                .on(exec);
         auto d_prec = d_prec_fact->generate(d_mtx);
 
-        const auto d_factorized_mat = d_prec->get_const_factorized_matrix();
+        const auto d_factorized_mat =
+            d_prec->get_const_factorized_matrix().get();
         const auto d_diag_locs = d_prec->get_const_diag_locations();
 
         auto rv = gko::test::generate_uniform_batch_random_matrix<BDense>(
@@ -140,9 +142,10 @@ protected:
         auto d_z = BDense::create(exec, rv->get_size());
 
         gko::kernels::reference::batch_ilu::apply_ilu(
-            ref, factorized_mat, diag_locs, rv.get(), z.get());
+            ref, mtx.get(), factorized_mat, diag_locs, rv.get(), z.get());
         gko::kernels::EXEC_NAMESPACE::batch_ilu::apply_ilu(
-            exec, d_factorized_mat, d_diag_locs, d_rv.get(), d_z.get());
+            exec, d_mtx.get(), d_factorized_mat, d_diag_locs, d_rv.get(),
+            d_z.get());
 
         const auto tol = 5000 * r<value_type>::value;
         GKO_ASSERT_BATCH_MTX_NEAR(z, d_z, tol);
@@ -178,5 +181,24 @@ TEST_F(BatchIlu, ParIluApplyIsEquivalentToReference)
     test_apply_eqvt_to_ref(gko::preconditioner::batch_ilu_type::parilu, 30);
 }
 
+TEST_F(BatchIlu, GenerateSplitFactorsIsEquivalentToReference)
+{
+    auto d_mtx = gko::share(gko::clone(exec, mtx.get()));
+    auto prec_fact = prec_type::build().with_skip_sorting(true).on(ref);
+    auto d_prec_fact = prec_type::build().with_skip_sorting(true).on(exec);
+
+    auto prec = prec_fact->generate(mtx);
+    auto d_prec = d_prec_fact->generate(d_mtx);
+
+    const auto l_and_u_pair =
+        prec->generate_split_factors_from_factored_matrix();
+    const auto d_l_and_u_pair =
+        d_prec->generate_split_factors_from_factored_matrix();
+    const auto tol = 5000 * r<value_type>::value;
+    GKO_ASSERT_BATCH_MTX_NEAR(l_and_u_pair.first.get(),
+                              d_l_and_u_pair.first.get(), tol);
+    GKO_ASSERT_BATCH_MTX_NEAR(l_and_u_pair.second.get(),
+                              d_l_and_u_pair.second.get(), tol);
+}
 
 }  // namespace

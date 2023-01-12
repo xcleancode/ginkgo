@@ -1,5 +1,5 @@
 /*******************************<GINKGO LICENSE>******************************
-Copyright (c) 2017-2022, the Ginkgo authors
+Copyright (c) 2017-2023, the Ginkgo authors
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -115,5 +115,48 @@ inline void batch_entry_parilu0_factorize_impl(
 
             fact_mat_vals[el] = to_write;
         }
+    }
+}
+
+
+template <typename ValueType>
+inline void initialize_batch_l_and_batch_u_individual_entry_impl(
+    const size_type batch_id, const int nnz, const int* const col_idxs,
+    const ValueType* const vals, const int l_nnz,
+    const int* const l_col_holders, int* const l_col_idxs,
+    ValueType* const l_vals, const int u_nnz, const int* const u_col_holders,
+    int* const u_col_idxs, ValueType* const u_vals)
+{
+    int col;
+    ValueType val;
+
+    for (int i = 0; i < l_nnz; i++) {
+        const int l_A_index = l_col_holders[i];
+        if (l_A_index >= 0) {
+            col = col_idxs[l_A_index];
+            val = vals[l_A_index + batch_id * nnz];
+        } else {
+            col = -1 * (l_A_index + 1);
+            val = one<ValueType>();
+        }
+
+        if (batch_id == 0) {
+            l_col_idxs[i] = col;
+        }
+
+        l_vals[i + batch_id * l_nnz] = val;
+    }
+
+    for (int i = 0; i < u_nnz; i++) {
+        const int u_A_index = u_col_holders[i];
+
+        col = col_idxs[u_A_index];
+        val = vals[u_A_index + batch_id * nnz];
+
+        if (batch_id == 0) {
+            u_col_idxs[i] = col;
+        }
+
+        u_vals[i + batch_id * u_nnz] = val;
     }
 }
