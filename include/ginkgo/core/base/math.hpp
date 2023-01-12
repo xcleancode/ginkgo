@@ -52,18 +52,27 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ginkgo/core/base/utils.hpp>
 
 
+class __half;
+
+
 namespace std {
+
+
 inline gko::half abs(gko::half a) { return gko::half((a > 0) ? a : -a); }
+
 inline gko::half abs(std::complex<gko::half> a)
 {
     return gko::half(sqrt(float(a.real() * a.real() + a.imag() * a.imag())));
 }
+
 inline gko::half sqrt(gko::half a) { return gko::half(sqrt(float(a))); }
 
 inline std::complex<gko::half> sqrt(std::complex<gko::half> a)
 {
     return std::complex<gko::half>(sqrt(std::complex<float>(a)));
 }
+
+
 }  // namespace std
 
 
@@ -202,6 +211,9 @@ struct is_complex_or_scalar_impl : std::is_scalar<T> {};
 
 template <>
 struct is_complex_or_scalar_impl<half> : std::true_type {};
+
+template <>
+struct is_complex_or_scalar_impl<__half> : std::true_type {};
 
 template <typename T>
 struct is_complex_or_scalar_impl<std::complex<T>>
