@@ -127,6 +127,8 @@ template <typename ValueType = default_precision, typename IndexType = int32>
 class Csr : public EnableLinOp<Csr<ValueType, IndexType>>,
             public EnableCreateMethod<Csr<ValueType, IndexType>>,
             public ConvertibleTo<Csr<next_precision<ValueType>, IndexType>>,
+            public ConvertibleTo<
+                Csr<next_precision<next_precision<ValueType>>, IndexType>>,
             public ConvertibleTo<Dense<ValueType>>,
             public ConvertibleTo<Coo<ValueType, IndexType>>,
             public ConvertibleTo<Ell<ValueType, IndexType>>,
@@ -393,7 +395,7 @@ public:
          *             number of threads in a SIMD unit is 7
          */
         load_balance(std::shared_ptr<const DpcppExecutor> exec)
-            : load_balance(exec->get_num_computing_units() * 7, 32, false,
+            : load_balance(exec->get_num_computing_units() * 8, 32, false,
                            "intel")
         {}
 
@@ -583,7 +585,7 @@ public:
          *             number of threads in a SIMD unit is 7
          */
         automatical(std::shared_ptr<const DpcppExecutor> exec)
-            : automatical(exec->get_num_computing_units() * 7, 32, false,
+            : automatical(exec->get_num_computing_units() * 8, 32, false,
                           "intel")
         {}
 
@@ -704,12 +706,21 @@ public:
         index_type max_length_per_row_;
     };
 
-    friend class Csr<next_precision<ValueType>, IndexType>;
+    friend class Csr<previous_precision<ValueType>, IndexType>;
+
+    friend class Csr<previous_precision<previous_precision<ValueType>>,
+                     IndexType>;
 
     void convert_to(
         Csr<next_precision<ValueType>, IndexType>* result) const override;
 
     void move_to(Csr<next_precision<ValueType>, IndexType>* result) override;
+
+    void convert_to(Csr<next_precision<next_precision<ValueType>>, IndexType>*
+                        result) const override;
+
+    void move_to(Csr<next_precision<next_precision<ValueType>>, IndexType>*
+                     result) override;
 
     void convert_to(Dense<ValueType>* other) const override;
 

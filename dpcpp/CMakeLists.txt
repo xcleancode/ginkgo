@@ -1,4 +1,4 @@
-ginkgo_extract_dpcpp_version(${CMAKE_CXX_COMPILER} GINKGO_DPCPP_VERSION)
+ginkgo_extract_dpcpp_version(${CMAKE_CXX_COMPILER} GINKGO_DPCPP_VERSION __SYCL_COMPILER_VERSION)
 set(GINKGO_DPCPP_VERSION ${GINKGO_DPCPP_VERSION} PARENT_SCOPE)
 
 find_package(MKL CONFIG REQUIRED HINTS "$ENV{MKLROOT}")
@@ -122,6 +122,7 @@ target_link_libraries(ginkgo_dpcpp PRIVATE MKL::MKL_DPCPP oneDPL)
 if (GINKGO_DPCPP_SINGLE_MODE)
     target_compile_definitions(ginkgo_dpcpp PRIVATE GINKGO_DPCPP_SINGLE_MODE=1)
 endif()
+target_compile_definitions(ginkgo_dpcpp PRIVATE GINKGO_COMPILE_KERNEL=1)
 
 ginkgo_default_includes(ginkgo_dpcpp)
 ginkgo_install_library(ginkgo_dpcpp)

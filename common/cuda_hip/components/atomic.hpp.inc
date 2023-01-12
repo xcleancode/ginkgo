@@ -111,15 +111,65 @@ __forceinline__ __device__ ResultType reinterpret(ValueType val)
         }                                                                    \
     };
 
+
+#define GKO_BIND_ATOMIC_HELPER_FAKE_STRUCTURE(CONVERTER_TYPE)               \
+    template <typename ValueType>                                           \
+    struct atomic_helper<                                                   \
+        ValueType,                                                          \
+        std::enable_if_t<(sizeof(ValueType) == sizeof(CONVERTER_TYPE))>> {  \
+        __forceinline__ __device__ static ValueType atomic_add(             \
+            ValueType* __restrict__ addr, ValueType val)                    \
+        {                                                                   \
+            assert(false);                                                  \
+            using c_type = CONVERTER_TYPE;                                  \
+            return atomic_wrapper(                                          \
+                addr, [&val](c_type& old, c_type assumed, c_type* c_addr) { \
+                    old = *c_addr;                                          \
+                    *c_addr = reinterpret<c_type>(                          \
+                        val + reinterpret<ValueType>(assumed));             \
+                });                                                         \
+        }                                                                   \
+        __forceinline__ __device__ static ValueType atomic_max(             \
+            ValueType* __restrict__ addr, ValueType val)                    \
+        {                                                                   \
+            assert(false);                                                  \
+            using c_type = CONVERTER_TYPE;                                  \
+            return atomic_wrapper(                                          \
+                addr, [&val](c_type& old, c_type assumed, c_type* c_addr) { \
+                    if (reinterpret<ValueType>(assumed) < val) {            \
+                        old = *c_addr;                                      \
+                        *c_addr = reinterpret<c_type>(assumed);             \
+                    }                                                       \
+                });                                                         \
+        }                                                                   \
+                                                                            \
+    private:                                                                \
+        template <typename Callable>                                        \
+        __forceinline__ __device__ static ValueType atomic_wrapper(         \
+            ValueType* __restrict__ addr, Callable set_old)                 \
+        {                                                                   \
+            CONVERTER_TYPE* address_as_converter =                          \
+                reinterpret_cast<CONVERTER_TYPE*>(addr);                    \
+            CONVERTER_TYPE old = *address_as_converter;                     \
+            CONVERTER_TYPE assumed = old;                                   \
+            set_old(old, assumed, address_as_converter);                    \
+            return reinterpret<ValueType>(old);                             \
+        }                                                                   \
+    };
+
 // Support 64-bit ATOMIC_ADD and ATOMIC_MAX
 GKO_BIND_ATOMIC_HELPER_STRUCTURE(unsigned long long int);
 // Support 32-bit ATOMIC_ADD and ATOMIC_MAX
 GKO_BIND_ATOMIC_HELPER_STRUCTURE(unsigned int);
 
 
-#if !(defined(CUDA_VERSION) && (CUDA_VERSION < 10010))
+#if !(defined(CUDA_VERSION) && (CUDA_VERSION < 10010)) && \
+    (__CUDA_ARCH__ >= 700) && !(defined(__HIPCC__) && GINKGO_HIP_PLATFORM_HCC)
 // CUDA 10.1 starts supporting 16-bit unsigned short int atomicCAS
+// required the CC>=70
 GKO_BIND_ATOMIC_HELPER_STRUCTURE(unsigned short int);
+#else
+GKO_BIND_ATOMIC_HELPER_FAKE_STRUCTURE(unsigned short int)
 #endif  // !(defined(CUDA_VERSION) && (CUDA_VERSION < 10010))
 
 #undef GKO_BIND_ATOMIC_HELPER_STRUCTURE
@@ -140,6 +190,15 @@ __forceinline__ __device__ T atomic_add(T* __restrict__ addr, T val)
         ValueType* __restrict__ addr, ValueType val) \
     {                                                \
         return atomicAdd(addr, val);                 \
+    }
+
+#define GKO_BIND_ATOMIC_ADD_NOT_IMPLEMENTED(ValueType) \
+    __forceinline__ __device__ ValueType atomic_add(   \
+        ValueType* __restrict__ addr, ValueType val)   \
+    {                                                  \
+        assert("The value type " #ValueType            \
+               " is not supported for atomic_add" &&   \
+               false);                                 \
     }
 
 GKO_BIND_ATOMIC_ADD(int);
@@ -163,6 +222,8 @@ GKO_BIND_ATOMIC_ADD(double);
 // CUDA 8.0 starts suppoting 64-bit double atomicAdd on devices of compute
 // capability 6.x and higher
 GKO_BIND_ATOMIC_ADD(double);
+#else
+GKO_BIND_ATOMIC_ADD_NOT_IMPLEMENTED(double);
 #endif  // !((defined(CUDA_VERSION) && (CUDA_VERSION < 8000)) ||
         // (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 600)))
 
@@ -171,6 +232,8 @@ GKO_BIND_ATOMIC_ADD(double);
 // CUDA 10.0 starts supporting 16-bit __half floating-point atomicAdd on devices
 // of compute capability 7.x and higher.
 GKO_BIND_ATOMIC_ADD(__half);
+#else
+GKO_BIND_ATOMIC_ADD_NOT_IMPLEMENTED(__half);
 #endif  // !((defined(CUDA_VERSION) && (CUDA_VERSION < 10000)) ||
         // (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 700)))
 
@@ -182,6 +245,8 @@ GKO_BIND_ATOMIC_ADD(__half);
 // elements; the entire __half2 is not guaranteed to be atomic as a single
 // 32-bit access.
 GKO_BIND_ATOMIC_ADD(__half2);
+#else
+GKO_BIND_ATOMIC_ADD_NOT_IMPLEMENTED(__half2)
 #endif  // !((defined(CUDA_VERSION) && (CUDA_VERSION < 10000)) ||
         // (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 600)))
 
@@ -190,6 +255,7 @@ GKO_BIND_ATOMIC_ADD(__half2);
 
 
 #undef GKO_BIND_ATOMIC_ADD
+#undef GKO_BIND_ATOMIC_ADD_NOT_IMPLEMENTED
 
 
 template <typename T>

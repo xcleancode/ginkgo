@@ -51,6 +51,60 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 namespace gko {
+#if defined(__CUDA_ARCH__)
+#if __CUDA_ARCH__ >= 700
+__device__ __forceinline__ bool is_nan(const __half& val)
+{
+    return __hisnan(val);
+}
+
+__device__ __forceinline__ __half abs(const __half& val) { return __habs(val); }
+#else
+__device__ __forceinline__ bool is_nan(const __half& val)
+{
+    return is_nan(static_cast<float>(val));
+}
+
+__device__ __forceinline__ __half abs(const __half& val)
+{
+    return abs(static_cast<float>(val));
+}
+#endif
+
+#elif defined(__HIP_DEVICE_COMPILE__)
+__device__ __forceinline__ bool is_nan(const __half& val)
+{
+    return __hisnan(val);
+}
+
+// rocm40 __habs is not constexpr
+__device__ __forceinline__ __half abs(const __half& val) { return __habs(val); }
+
+#endif
+
+#if defined(__HIPCC__)
+__device__ __forceinline__ float sqrt(float val) { return sqrtf(val); }
+__device__ __forceinline__ double sqrt(double val) { return sqrt(val); }
+__device__ __forceinline__ thrust::complex<float> sqrt(
+    thrust::complex<float> val)
+{
+    return thrust::sqrt(val);
+}
+__device__ __forceinline__ thrust::complex<double> sqrt(
+    thrust::complex<double> val)
+{
+    return thrust::sqrt(val);
+}
+
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 700
+__device__ __forceinline__ __half sqrt(__half val)
+{
+    return sqrt(static_cast<float>(val));
+}
+#else
+__device__ __forceinline__ __half sqrt(__half val) { return hsqrt(val); }
+#endif
+#endif
 
 
 namespace kernels {
@@ -154,6 +208,17 @@ struct hiplibs_type_impl<std::complex<double>> {
     using type = hipDoubleComplex;
 };
 
+template <>
+struct hiplibs_type_impl<half> {
+    using type = __half;
+};
+
+template <>
+struct hiplibs_type_impl<std::complex<half>> {
+    using type = __half2;
+};
+
+
 template <typename T>
 struct hiplibs_type_impl<thrust::complex<T>> {
     using type = typename hiplibs_type_impl<std::complex<T>>::type;
@@ -226,9 +291,14 @@ struct hip_type_impl<volatile T> {
     using type = volatile typename hip_type_impl<T>::type;
 };
 
+template <>
+struct hip_type_impl<gko::half> {
+    using type = __half;
+};
+
 template <typename T>
 struct hip_type_impl<std::complex<T>> {
-    using type = thrust::complex<T>;
+    using type = thrust::complex<typename hip_type_impl<T>::type>;
 };
 
 template <>
@@ -241,6 +311,11 @@ struct hip_type_impl<hipComplex> {
     using type = thrust::complex<float>;
 };
 
+template <>
+struct hip_type_impl<__half2> {
+    using type = thrust::complex<__half>;
+};
+
 template <typename T>
 struct hip_struct_member_type_impl {
     using type = T;
@@ -249,6 +324,11 @@ struct hip_struct_member_type_impl {
 template <typename T>
 struct hip_struct_member_type_impl<std::complex<T>> {
     using type = fake_complex<T>;
+};
+
+template <>
+struct hip_struct_member_type_impl<gko::half> {
+    using type = __half;
 };
 
 template <typename ValueType, typename IndexType>

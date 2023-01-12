@@ -101,6 +101,17 @@ struct basic_float_traits<float16> {
     static constexpr bool rounds_to_nearest = true;
 };
 
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+template <>
+struct basic_float_traits<__half> {
+    using type = __half;
+    static constexpr int sign_bits = 1;
+    static constexpr int significand_bits = 10;
+    static constexpr int exponent_bits = 5;
+    static constexpr bool rounds_to_nearest = true;
+};
+#endif
+
 template <>
 struct basic_float_traits<float32> {
     using type = float32;
@@ -310,22 +321,24 @@ private:
  */
 class half {
 public:
-    half() noexcept = default;
+    GKO_ATTRIBUTES half() noexcept = default;
 
-    GKO_ATTRIBUTES half(float32 val) noexcept
+    template <typename T, typename = std::enable_if_t<std::is_scalar<T>::value>>
+    GKO_ATTRIBUTES half(const T val)
     {
-#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
-        const auto tmp = __float2half_rn(val);
-        data_ = reinterpret_cast<const uint16&>(tmp);
-#else   // defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
-        data_ = float2half(reinterpret_cast<const uint32&>(val));
-#endif  // defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+        this->float2half(static_cast<float>(val));
     }
 
-    GKO_ATTRIBUTES half(float64 val) noexcept : half(static_cast<float32>(val))
-    {}
+    GKO_ATTRIBUTES half(const half& val) = default;
 
-    GKO_ATTRIBUTES operator float32() const noexcept
+    template <typename V>
+    GKO_ATTRIBUTES half& operator=(const V val)
+    {
+        this->float2half(static_cast<float>(val));
+        return *this;
+    }
+
+    GKO_ATTRIBUTES operator float() const noexcept
     {
 #if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
         return __half2float(reinterpret_cast<const __half&>(data_));
@@ -335,24 +348,88 @@ public:
 #endif  // defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
     }
 
-    GKO_ATTRIBUTES operator float64() const noexcept
-    {
-        return static_cast<float64>(static_cast<float32>(*this));
+    // can not use half operator _op(const half) for half + half
+    // operation will cast it to float and then do float operation such that it
+    // becomes float in the end.
+#define HALF_OPERATOR(_op, _opeq)                                           \
+    GKO_ATTRIBUTES friend half operator _op(const half lhf, const half rhf) \
+    {                                                                       \
+        return static_cast<half>(static_cast<float>(lhf)                    \
+                                     _op static_cast<float>(rhf));          \
+    }                                                                       \
+    GKO_ATTRIBUTES half& operator _opeq(const half& hf)                     \
+    {                                                                       \
+        auto result = *this _op hf;                                         \
+        this->float2half(result);                                           \
+        return *this;                                                       \
+    }
+    HALF_OPERATOR(+, +=)
+    HALF_OPERATOR(-, -=)
+    HALF_OPERATOR(*, *=)
+    HALF_OPERATOR(/, /=)
+
+    // Do operation with different type
+    // If it is floating point, using floating point as type.
+    // If it is integer, using half as type
+#define HALF_FRIEND_OPERATOR(_op, _opeq)                                   \
+    template <typename T>                                                  \
+    GKO_ATTRIBUTES friend std::enable_if_t<                                \
+        !std::is_same<T, half>::value && std::is_scalar<T>::value,         \
+        typename std::conditional<std::is_floating_point<T>::value, T,     \
+                                  half>::type>                             \
+    operator _op(const half hf, const T val)                               \
+    {                                                                      \
+        using type =                                                       \
+            typename std::conditional<std::is_floating_point<T>::value, T, \
+                                      half>::type;                         \
+        auto result = static_cast<type>(hf);                               \
+        result _opeq static_cast<type>(val);                               \
+        return result;                                                     \
+    }                                                                      \
+    template <typename T>                                                  \
+    GKO_ATTRIBUTES friend std::enable_if_t<                                \
+        !std::is_same<T, half>::value && std::is_scalar<T>::value,         \
+        typename std::conditional<std::is_floating_point<T>::value, T,     \
+                                  half>::type>                             \
+    operator _op(const T val, const half hf)                               \
+    {                                                                      \
+        using type =                                                       \
+            typename std::conditional<std::is_floating_point<T>::value, T, \
+                                      half>::type;                         \
+        auto result = static_cast<type>(hf);                               \
+        result _opeq static_cast<type>(val);                               \
+        return result;                                                     \
     }
 
-    GKO_ATTRIBUTES half operator-() const noexcept
+    HALF_FRIEND_OPERATOR(+, +=)
+    HALF_FRIEND_OPERATOR(-, -=)
+    HALF_FRIEND_OPERATOR(*, *=)
+    HALF_FRIEND_OPERATOR(/, /=)
+
+    // the negative
+    GKO_ATTRIBUTES half operator-() const
     {
-        auto res = *this;
-        // flip sign bit
-        res.data_ ^= f16_traits::sign_mask;
-        return res;
+        auto val = 0.0f - *this;
+        return half(val);
     }
 
 private:
     using f16_traits = detail::float_traits<float16>;
     using f32_traits = detail::float_traits<float32>;
 
-    static uint16 float2half(uint32 data_) noexcept
+    // TODO: do we really need this one?
+    // Without it, everything can be constexpr, which might make stuff easier.
+    GKO_ATTRIBUTES void float2half(float val) noexcept
+    {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+        const auto tmp = __float2half_rn(val);
+        data_ = reinterpret_cast<const uint16&>(tmp);
+#else   // defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+        data_ = float2half(reinterpret_cast<const uint32&>(val));
+#endif  // defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+    }
+
+    static GKO_ATTRIBUTES uint16 float2half(uint32 data_) noexcept
     {
         using conv = detail::precision_converter<float32, float16>;
         if (f32_traits::is_inf(data_)) {
@@ -374,7 +451,7 @@ private:
         }
     }
 
-    static uint32 half2float(uint16 data_) noexcept
+    static GKO_ATTRIBUTES uint32 half2float(uint16 data_) noexcept
     {
         using conv = detail::precision_converter<float16, float32>;
         if (f16_traits::is_inf(data_)) {
@@ -493,8 +570,17 @@ class complex<gko::half> {
 public:
     using value_type = gko::half;
 
-    complex(const value_type& real = 0.f, const value_type& imag = 0.f)
+    complex(const value_type& real = value_type(0.f),
+            const value_type& imag = value_type(0.f))
         : real_(real), imag_(imag)
+    {}
+    template <typename T, typename U>
+    explicit complex(const T& real, const U& imag)
+        : complex(static_cast<value_type>(real), static_cast<value_type>(imag))
+    {}
+
+    template <typename T>
+    complex(const T& real) : complex(static_cast<value_type>(real))
     {}
 
     template <typename U>
@@ -512,6 +598,72 @@ public:
     {
         return std::complex<gko::float32>(static_cast<gko::float32>(real_),
                                           static_cast<gko::float32>(imag_));
+    }
+
+    template <typename V>
+    complex& operator=(const V& val)
+    {
+        real_ = val;
+        imag_ = value_type();
+        return *this;
+    }
+
+    template <typename V>
+    complex& operator=(const std::complex<V>& val)
+    {
+        real_ = val.real();
+        imag_ = val.imag();
+        return *this;
+    }
+
+    complex& operator+=(const value_type& real)
+    {
+        real_ += real;
+        return *this;
+    }
+    complex& operator-=(const value_type& real)
+    {
+        real_ -= real;
+        return *this;
+    }
+    complex& operator*=(const value_type& real)
+    {
+        real_ *= real;
+        imag_ *= real;
+        return *this;
+    }
+    complex& operator/=(const value_type& real)
+    {
+        real_ /= real;
+        imag_ /= real;
+        return *this;
+    }
+
+    template <typename T>
+    complex& operator+=(const complex<T>& val)
+    {
+        real_ += val.real();
+        imag_ += val.imag();
+        return *this;
+    }
+    template <typename T>
+    complex& operator-=(const complex<T>& val)
+    {
+        real_ -= val.real();
+        imag_ -= val.imag();
+        return *this;
+    }
+    template <typename T>
+    complex& operator*=(const complex<T>& val)
+    {
+        *this = *this * complex(val.real(), val.imag());
+        return *this;
+    }
+    template <typename T>
+    complex& operator/=(const complex<T>& val)
+    {
+        *this = *this / complex(val.real(), val.imag());
+        return *this;
     }
 
 private:
@@ -552,10 +704,6 @@ private:
 
 
 template <>
-struct is_scalar<gko::half> : std::true_type {};
-
-
-template <>
 struct numeric_limits<gko::half> {
     static constexpr bool is_specialized{true};
     static constexpr bool is_signed{true};
@@ -574,7 +722,30 @@ struct numeric_limits<gko::half> {
     {
         return gko::detail::float_traits<gko::half>::eps;
     }
+
+    static constexpr float infinity()
+    {
+        return numeric_limits<float>::infinity();
+    }
+
+    static constexpr float min() { return numeric_limits<float>::min(); }
+
+    static constexpr float max() { return numeric_limits<float>::max(); }
+
+    static constexpr float quiet_NaN()
+    {
+        return numeric_limits<float>::quiet_NaN();
+    }
 };
+
+template <>
+inline complex<double>& complex<double>::operator=(
+    const std::complex<gko::half>& a)
+{
+    complex<double> t(a.real(), a.imag());
+    operator=(t);
+    return *this;
+}
 
 }  // namespace std
 

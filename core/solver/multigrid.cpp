@@ -44,6 +44,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ginkgo/core/base/utils.hpp>
 #include <ginkgo/core/base/utils_helper.hpp>
 #include <ginkgo/core/matrix/dense.hpp>
+#include <ginkgo/core/multigrid/pgm.hpp>
 #include <ginkgo/core/solver/ir.hpp>
 #include <ginkgo/core/stop/iteration.hpp>
 
@@ -307,7 +308,7 @@ void MultigridState::generate(const LinOp* system_matrix_in,
         auto next_nrows = mg_level_list.at(i)->get_coarse_op()->get_size()[0];
         auto mg_level = mg_level_list.at(i);
 
-        run<gko::multigrid::EnableMultigridLevel, float, double,
+        run<gko::multigrid::EnableMultigridLevel, half, float, double,
             std::complex<float>, std::complex<double>>(
             mg_level,
             [&, this](auto mg_level, auto i, auto cycle, auto current_nrows,
@@ -364,7 +365,7 @@ void MultigridState::run_mg_cycle(multigrid::cycle cycle, size_type level,
         return;
     }
     auto mg_level = multigrid->get_mg_level_list().at(level);
-    run<gko::multigrid::EnableMultigridLevel, float, double,
+    run<gko::multigrid::EnableMultigridLevel, half, float, double,
         std::complex<float>, std::complex<double>>(
         mg_level, [&, this](auto mg_level) {
             using value_type =
@@ -494,6 +495,7 @@ void Multigrid::generate()
     auto num_rows = this->get_system_matrix()->get_size()[0];
     size_type level = 0;
     auto matrix = this->get_system_matrix();
+    auto working_matrix = matrix;
     auto exec = this->get_executor();
     // Always generate smoother with size = level.
     while (level < parameters_.max_levels &&
@@ -503,16 +505,16 @@ void Multigrid::generate()
         auto mg_level_factory = parameters_.mg_level.at(index);
         // coarse generate
         auto mg_level = as<gko::multigrid::MultigridLevel>(
-            share(mg_level_factory->generate(matrix)));
+            share(mg_level_factory->generate(working_matrix)));
         if (mg_level->get_coarse_op()->get_size()[0] == num_rows) {
             // do not reduce dimension
             break;
         }
 
-        run<gko::multigrid::EnableMultigridLevel, float, double,
+        run<gko::multigrid::EnableMultigridLevel, half, float, double,
             std::complex<float>, std::complex<double>>(
             mg_level,
-            [this](auto mg_level, auto index, auto matrix) {
+            [&, this](auto mg_level, auto index, auto matrix) {
                 using value_type =
                     typename std::decay_t<decltype(*mg_level)>::value_type;
                 handle_list<value_type>(
@@ -531,6 +533,10 @@ void Multigrid::generate()
                         post_smoother_list_, parameters_.smoother_iters,
                         parameters_.smoother_relax);
                 }
+                working_matrix =
+                    gko::as<gko::multigrid::Pgm<value_type, int, float>>(
+                        mg_level)
+                        ->get_working_coarse_matrix();
             },
             index, mg_level->get_fine_op());
 
@@ -547,7 +553,7 @@ void Multigrid::generate()
     auto last_mg_level = mg_level_list_.back();
 
     // generate coarsest solver
-    run<gko::multigrid::EnableMultigridLevel, float, double,
+    run<gko::multigrid::EnableMultigridLevel, half, float, double,
         std::complex<float>, std::complex<double>>(
         last_mg_level,
         [this](auto mg_level, auto level, auto matrix) {
@@ -598,7 +604,7 @@ void Multigrid::apply_with_initial_guess_impl(const LinOp* b, LinOp* x,
             b, x);
     };
     auto first_mg_level = this->get_mg_level_list().front();
-    run<gko::multigrid::EnableMultigridLevel, float, double,
+    run<gko::multigrid::EnableMultigridLevel, half, float, double,
         std::complex<float>, std::complex<double>>(first_mg_level, lambda, b,
                                                    x);
 }
@@ -637,7 +643,7 @@ void Multigrid::apply_with_initial_guess_impl(const LinOp* alpha,
             alpha, b, beta, x);
     };
     auto first_mg_level = this->get_mg_level_list().front();
-    run<gko::multigrid::EnableMultigridLevel, float, double,
+    run<gko::multigrid::EnableMultigridLevel, half, float, double,
         std::complex<float>, std::complex<double>>(first_mg_level, lambda,
                                                    alpha, b, beta, x);
 }
@@ -699,7 +705,7 @@ void Multigrid::apply_dense_impl(const VectorType* b, VectorType* x,
 
     auto first_mg_level = this->get_mg_level_list().front();
 
-    run<gko::multigrid::EnableMultigridLevel, float, double,
+    run<gko::multigrid::EnableMultigridLevel, half, float, double,
         std::complex<float>, std::complex<double>>(first_mg_level, lambda, b,
                                                    x);
 }
