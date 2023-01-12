@@ -96,10 +96,10 @@ void initialize_subspace_vectors(matrix::Dense<ValueType>* subspace_vectors,
     if (!deterministic) {
         auto gen = curand::rand_generator(std::random_device{}(),
                                           CURAND_RNG_PSEUDO_DEFAULT);
-        // curand::rand_vector(
-        //     gen,
-        //     subspace_vectors->get_size()[0] * subspace_vectors->get_stride(),
-        //     0.0, 1.0, subspace_vectors->get_values());
+        curand::rand_vector(
+            gen,
+            subspace_vectors->get_size()[0] * subspace_vectors->get_stride(),
+            0.0, 1.0, subspace_vectors->get_values());
     }
 }
 
