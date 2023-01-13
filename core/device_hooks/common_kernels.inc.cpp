@@ -83,7 +83,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "core/solver/batch_direct_kernels.hpp"
 #include "core/solver/batch_gmres_kernels.hpp"
 #include "core/solver/batch_idr_kernels.hpp"
+#include "core/solver/batch_lower_trs_kernels.hpp"
 #include "core/solver/batch_richardson_kernels.hpp"
+#include "core/solver/batch_upper_trs_kernels.hpp"
 #include "core/solver/bicg_kernels.hpp"
 #include "core/solver/bicgstab_kernels.hpp"
 #include "core/solver/cb_gmres_kernels.hpp"
@@ -703,6 +705,30 @@ GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE(
 }  // namespace batch_direct
 
 
+namespace batch_lower_trs {
+
+
+template <typename ValueType>
+GKO_DECLARE_BATCH_LOWER_TRS_APPLY_KERNEL(ValueType)
+GKO_NOT_COMPILED(GKO_HOOK_MODULE);
+GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE(GKO_DECLARE_BATCH_LOWER_TRS_APPLY_KERNEL);
+
+
+}  // namespace batch_lower_trs
+
+
+namespace batch_upper_trs {
+
+
+template <typename ValueType>
+GKO_DECLARE_BATCH_UPPER_TRS_APPLY_KERNEL(ValueType)
+GKO_NOT_COMPILED(GKO_HOOK_MODULE);
+GKO_INSTANTIATE_FOR_EACH_VALUE_TYPE(GKO_DECLARE_BATCH_UPPER_TRS_APPLY_KERNEL);
+
+
+}  // namespace batch_upper_trs
+
+
 namespace sparsity_csr {
 
 
@@ -1259,6 +1285,13 @@ GKO_STUB_VALUE_TYPE_AND_INT32_INDEX(
 GKO_STUB_VALUE_TYPE_AND_INT32_INDEX(
     GKO_DECLARE_BATCH_ISAI_FILL_VALUES_DENSE_MATRIX_AND_SOLVE_KERNEL);
 GKO_STUB_VALUE_TYPE_AND_INT32_INDEX(GKO_DECLARE_BATCH_ISAI_APPLY_KERNEL);
+GKO_STUB_VALUE_TYPE_AND_INT32_INDEX(
+    GKO_DECLARE_BATCH_ISAI_EXTRACT_CSR_PATTERN_KERNEL);
+GKO_STUB_VALUE_TYPE_AND_INT32_INDEX(
+    GKO_DECLARE_BATCH_ISAI_FILL_BATCH_CSR_SYSTEM_USING_PATTERN);
+GKO_STUB_VALUE_TYPE_AND_INT32_INDEX(GKO_DECLARE_BATCH_ISAI_INITIALIZE_B_AND_X);
+GKO_STUB_VALUE_TYPE_AND_INT32_INDEX(
+    GKO_DECLARE_BATCH_ISAI_WRITE_SOLUTION_TO_INVERSE);
 
 
 }  // namespace batch_isai

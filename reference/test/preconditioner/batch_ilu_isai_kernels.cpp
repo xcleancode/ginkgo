@@ -75,41 +75,44 @@ protected:
     using ilu_prec_with_isai_spmv =
         gko::preconditioner::Ilu<lower_isai, upper_isai>;
 
-    BatchIluIsai() : exec(gko::ReferenceExecutor::create()), mtx(get_matrix())
+    BatchIluIsai()
+        : exec(gko::ReferenceExecutor::create()),
+          mtx_big(get_matrix(true)),
+          mtx_small(get_matrix(false))
     {}
 
+    std::ranlux48 rand_engine;
+
     const size_t nbatch = 2;
-    const index_type nrows = 4;
+    const index_type nrows_big = 40;
+    const index_type min_nnz_row_big = 33;
+    const index_type nrows_small = 4;
+    const index_type min_nnz_row_small = 3;
     std::shared_ptr<const gko::ReferenceExecutor> exec;
-    std::shared_ptr<const Mtx> mtx;
+    std::shared_ptr<const Mtx> mtx_small;
+    std::shared_ptr<const Mtx> mtx_big;
 
-    std::unique_ptr<Mtx> get_matrix()
+    std::unique_ptr<Mtx> get_matrix(bool is_big)
     {
-        auto mat = Mtx::create(exec, nbatch, gko::dim<2>(nrows, nrows), 8);
-        index_type* const row_ptrs = mat->get_row_ptrs();
-        index_type* const col_idxs = mat->get_col_idxs();
-        value_type* const vals = mat->get_values();
-        // clang-format off
-		row_ptrs[0] = 0; row_ptrs[1] = 2; row_ptrs[2] = 4; row_ptrs[3] = 6; row_ptrs[4] = 8;
-		col_idxs[0] = 0; col_idxs[1] = 2; col_idxs[2] = 0; col_idxs[3] = 1;
-		col_idxs[4] = 0; col_idxs[5] = 2; col_idxs[6] = 1, col_idxs[7] = 3;
-		vals[0] = 2.0; vals[1] = 0.25; vals[2] = -1.0; vals[3] = -3.0;
-		vals[4] = 2.0; vals[5] = 0.2;
-		vals[6] = -1.5; vals[7] = 0.55; vals[8] = -1.0; vals[9] = 4.0;
-		vals[10] = 2.0; vals[11] = -0.25;
-        vals[12] = -1.45; vals[13] = 0.45; vals[14] = -5.0; vals[15] = 8.0;
+        const auto nrows = is_big == true ? nrows_big : nrows_small;
+        const auto min_nnz_row =
+            is_big == true ? min_nnz_row_big : min_nnz_row_small;
 
-        // clang-format on
-        return mat;
+        return gko::test::generate_uniform_batch_random_matrix<Mtx>(
+            nbatch, nrows, nrows,
+            std::uniform_int_distribution<>(min_nnz_row, nrows),
+            std::normal_distribution<real_type>(0.0, 1.0), rand_engine, true,
+            exec);
     }
 
     // TODO: Add tests for non-sorted input matrix
     void test_batch_ilu_isai_generation_is_eqvt_to_unbatched(
         const gko::preconditioner::batch_ilu_type ilu_type,
         const int parilu_num_sweeps, const int lower_spy_power,
-        const int upper_spy_power)
+        const int upper_spy_power, bool test_isai_extension = false)
     {
         using unbatch_type = typename Mtx::unbatch_type;
+        auto mtx = test_isai_extension == true ? mtx_big : mtx_small;
 
         auto umtxs = gko::test::share(mtx->unbatch());
 
@@ -191,15 +194,19 @@ protected:
         const auto u_isai_batch_vec =
             prec->get_const_upper_factor_isai()->unbatch();
 
+        const auto tol = test_isai_extension == true
+                             ? 100000 * r<value_type>::value
+                             : r<value_type>::value;
+
         for (size_t i = 0; i < umtxs.size(); i++) {
             GKO_ASSERT_MTX_NEAR(check_lower_factor_unbatched[i], l_batch_vec[i],
-                                r<value_type>::value);
+                                tol);
             GKO_ASSERT_MTX_NEAR(check_upper_factor_unbatched[i], u_batch_vec[i],
-                                r<value_type>::value);
+                                tol);
             GKO_ASSERT_MTX_NEAR(check_lower_factor_isai_unbatched[i],
-                                l_isai_batch_vec[i], r<value_type>::value);
+                                l_isai_batch_vec[i], tol);
             GKO_ASSERT_MTX_NEAR(check_upper_factor_isai_unbatched[i],
-                                u_isai_batch_vec[i], r<value_type>::value);
+                                u_isai_batch_vec[i], tol);
         }
     }
 
@@ -208,16 +215,25 @@ protected:
         const gko::preconditioner::batch_ilu_type ilu_type,
         const int parilu_num_sweeps, const int lower_spy_power,
         const int upper_spy_power, const int num_relaxation_steps,
-        const gko::preconditioner::batch_ilu_isai_apply apply_type)
+        const gko::preconditioner::batch_ilu_isai_apply apply_type,
+        bool test_isai_extension = false)
     {
         using unbatch_type = typename Mtx::unbatch_type;
 
+        auto mtx = test_isai_extension == true ? mtx_big : mtx_small;
+
         auto umtxs = gko::test::share(mtx->unbatch());
 
-        auto b = gko::batch_initialize<BDense>(
-            {{-2.0, 9.0, 4.0, 7.0}, {-3.0, 5.0, 3.0, 10.0}}, exec);
+        auto nrows = test_isai_extension == true ? nrows_big : nrows_small;
+
+        auto b = gko::test::generate_uniform_batch_random_matrix<BDense>(
+            nbatch, nrows, 1, std::uniform_int_distribution<>(1, 1),
+            std::normal_distribution<real_type>(0.0, 1.0), rand_engine, false,
+            exec);
+
         auto x = BDense::create(
-            exec, gko::batch_dim<>(2, gko::dim<2>(this->nrows, 1)));
+            exec, gko::batch_dim<>(nbatch, gko::dim<2>(nrows, 1)));
+
         auto ub = b->unbatch();
         auto ux = x->unbatch();
 
@@ -369,8 +385,11 @@ protected:
             prec->get_num_relaxation_steps(), b.get(), x.get());
 
         auto xs = x->unbatch();
+        const auto tol = test_isai_extension == true
+                             ? 100000 * r<value_type>::value
+                             : 10 * r<value_type>::value;
         for (size_t i = 0; i < umtxs.size(); i++) {
-            GKO_ASSERT_MTX_NEAR(ux[i], xs[i], r<value_type>::value);
+            GKO_ASSERT_MTX_NEAR(ux[i], xs[i], tol);
         }
     }
 };
@@ -394,8 +413,10 @@ TYPED_TEST(BatchIluIsai, BatchIluIsaiGenerationIsEquivalentToUnbatched)
         gko::preconditioner::batch_ilu_type::parilu, 10, 1, 2);
 }
 
-TYPED_TEST(BatchIluIsai,
-           BatchIluIsaiWithApplyTypeRelxationStepsSimpleIsEquivalentToUnbatched)
+
+TYPED_TEST(
+    BatchIluIsai,
+    BatchIluIsaiWithApplyTypeRelaxationStepsSimpleIsEquivalentToUnbatched)
 {
     this->test_batch_ilu_isai_apply_to_single_vector_is_eqvt_to_unbatched(
         gko::preconditioner::batch_ilu_type::exact_ilu, 10, 2, 3, 3,
@@ -417,6 +438,7 @@ TYPED_TEST(BatchIluIsai,
         gko::preconditioner::batch_ilu_isai_apply::
             relaxation_steps_isai_simple);
 }
+
 
 // TODO: Implement BatchCsr Spegmm
 // TYPED_TEST(BatchIluIsai,
@@ -464,6 +486,7 @@ TYPED_TEST(BatchIluIsai,
         gko::preconditioner::batch_ilu_isai_apply::spmv_isai_simple);
 }
 
+
 // TODO: Implement BatchCsr Spegmm
 // TYPED_TEST(BatchIluIsai,
 //            BatchIluIsaiWithApplyTypeSpmvSpgemmIsEquivalentToUnbatched)
@@ -484,6 +507,42 @@ TYPED_TEST(BatchIluIsai,
 //         gko::preconditioner::batch_ilu_type::parilu, 10, 1, 2, 3,
 //         gko::preconditioner::batch_ilu_isai_apply::spmv_isai_with_spgemm);
 // }
+
+
+TYPED_TEST(BatchIluIsai, BatchIluExtendedIsaiGenerationIsEquivalentToUnbatched)
+{
+    this->test_batch_ilu_isai_generation_is_eqvt_to_unbatched(
+        gko::preconditioner::batch_ilu_type::exact_ilu, 10, 2, 3, true);
+
+    this->test_batch_ilu_isai_generation_is_eqvt_to_unbatched(
+        gko::preconditioner::batch_ilu_type::exact_ilu, 10, 1, 2, true);
+
+    this->test_batch_ilu_isai_generation_is_eqvt_to_unbatched(
+        gko::preconditioner::batch_ilu_type::parilu, 10, 2, 3, true);
+
+    this->test_batch_ilu_isai_generation_is_eqvt_to_unbatched(
+        gko::preconditioner::batch_ilu_type::parilu, 10, 1, 2, true);
+}
+
+
+TYPED_TEST(BatchIluIsai, BatchIluExtendedIsaiApplyIsEquivalentToUnbatched)
+{
+    this->test_batch_ilu_isai_apply_to_single_vector_is_eqvt_to_unbatched(
+        gko::preconditioner::batch_ilu_type::exact_ilu, 10, 2, 3, 3,
+        gko::preconditioner::batch_ilu_isai_apply::spmv_isai_simple, true);
+
+    this->test_batch_ilu_isai_apply_to_single_vector_is_eqvt_to_unbatched(
+        gko::preconditioner::batch_ilu_type::exact_ilu, 10, 1, 2, 3,
+        gko::preconditioner::batch_ilu_isai_apply::spmv_isai_simple, true);
+
+    this->test_batch_ilu_isai_apply_to_single_vector_is_eqvt_to_unbatched(
+        gko::preconditioner::batch_ilu_type::parilu, 10, 2, 3, 3,
+        gko::preconditioner::batch_ilu_isai_apply::spmv_isai_simple, true);
+
+    this->test_batch_ilu_isai_apply_to_single_vector_is_eqvt_to_unbatched(
+        gko::preconditioner::batch_ilu_type::parilu, 10, 1, 2, 3,
+        gko::preconditioner::batch_ilu_isai_apply::spmv_isai_simple, true);
+}
 
 
 }  // namespace
