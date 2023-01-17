@@ -121,7 +121,7 @@ endif()
 target_include_directories(ginkgo_dpcpp
     PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/..)
 target_link_libraries(ginkgo_dpcpp PUBLIC ginkgo_device)
-target_link_libraries(ginkgo_dpcpp PRIVATE MKL::MKL_DPCPP oneDPL)
+target_link_libraries(ginkgo_dpcpp PRIVATE MKL::MKL oneDPL)
 if (GINKGO_DPCPP_SINGLE_MODE)
     target_compile_definitions(ginkgo_dpcpp PRIVATE GINKGO_DPCPP_SINGLE_MODE=1)
 endif()
