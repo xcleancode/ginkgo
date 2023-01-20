@@ -78,13 +78,15 @@ void cholesky_symbolic_count(
         auto lower_end = row_begin;
         for (auto nz = row_begin; nz < row_end; nz++) {
             const auto col = cols[nz];
-            if (col <= row) {
+            if (col < row) {
                 postorder_cols[lower_end] = inv_postorder[col];
                 lower_end++;
             }
         }
         std::sort(postorder_cols + row_begin, postorder_cols + lower_end);
         // the subtree root should be the last entry as a sentinel
+        if (lower_end == row_end || cols[lower_end] != row) {
+        }
         GKO_ASSERT(postorder_cols[lower_end - 1] == inv_postorder[row]);
         // Now move from each node to its LCA with other nodes to cut off a path
         IndexType count{};
