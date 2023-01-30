@@ -533,10 +533,6 @@ void Multigrid::generate()
                         post_smoother_list_, parameters_.smoother_iters,
                         parameters_.smoother_relax);
                 }
-                working_matrix =
-                    gko::as<gko::multigrid::Pgm<value_type, int, float>>(
-                        mg_level)
-                        ->get_working_coarse_matrix();
             },
             index, mg_level->get_fine_op());
 

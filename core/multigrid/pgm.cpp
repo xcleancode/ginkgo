@@ -164,7 +164,6 @@ void Pgm<ValueType, IndexType, WorkingType>::generate()
     const csr_type* pgm_op =
         dynamic_cast<const csr_type*>(system_matrix_.get());
     std::shared_ptr<const csr_type> pgm_op_shared_ptr{};
-    std::cout << "converting" << std::endl;
     // If system matrix is not csr or need sorting, generate the csr.
     if (!parameters_.skip_sorting || !pgm_op) {
         pgm_op_shared_ptr = convert_to_with_sorting<csr_type>(
@@ -173,7 +172,6 @@ void Pgm<ValueType, IndexType, WorkingType>::generate()
         // keep the same precision data in fine_op
         this->set_fine_op(pgm_op_shared_ptr);
     }
-    std::cout << "fine" << std::endl;
     // fine_op keeps ValueType
     if (!dynamic_cast<const fine_csr_type*>(pgm_op)) {
         // pgm is already sorted
@@ -181,7 +179,6 @@ void Pgm<ValueType, IndexType, WorkingType>::generate()
             convert_to_with_sorting<fine_csr_type>(exec, pgm_op, true);
         this->set_fine_op(op);
     }
-    std::cout << "finished" << std::endl;
     // Initial agg = -1
     exec->run(pgm::make_fill_array(agg_.get_data(), agg_.get_num_elems(),
                                    -one<IndexType>()));
