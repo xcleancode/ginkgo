@@ -72,8 +72,8 @@ struct is_matrix_type_builder : std::false_type {};
 template <typename Builder, typename ValueType, typename IndexType>
 struct is_matrix_type_builder<
     Builder, ValueType, IndexType,
-    gko::xstd::void_t<
-        decltype(std::declval<Builder>().template create<ValueType, IndexType>(
+    gko::xstd::void_t<decltype(
+        std::declval<Builder>().template create<ValueType, IndexType>(
             std::declval<std::shared_ptr<const Executor>>()))>>
     : std::true_type {};
 
@@ -285,10 +285,6 @@ public:
 
     using EnableDistributedLinOp<Matrix>::convert_to;
     using EnableDistributedLinOp<Matrix>::move_to;
-    using ConvertibleTo<Matrix<next_precision<ValueType>, LocalIndexType,
-                               GlobalIndexType>>::convert_to;
-    using ConvertibleTo<Matrix<next_precision<ValueType>, LocalIndexType,
-                               GlobalIndexType>>::move_to;
 
     void convert_to(Matrix<next_precision<value_type>, local_index_type,
                            global_index_type>* result) const override;

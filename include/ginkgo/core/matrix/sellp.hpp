@@ -87,13 +87,6 @@ class Sellp : public EnableLinOp<Sellp<ValueType, IndexType>>,
 public:
     using EnableLinOp<Sellp>::convert_to;
     using EnableLinOp<Sellp>::move_to;
-    using ConvertibleTo<
-        Sellp<next_precision<ValueType>, IndexType>>::convert_to;
-    using ConvertibleTo<Sellp<next_precision<ValueType>, IndexType>>::move_to;
-    using ConvertibleTo<Dense<ValueType>>::convert_to;
-    using ConvertibleTo<Dense<ValueType>>::move_to;
-    using ConvertibleTo<Csr<ValueType, IndexType>>::convert_to;
-    using ConvertibleTo<Csr<ValueType, IndexType>>::move_to;
     using ReadableFromMatrixData<ValueType, IndexType>::read;
 
     using value_type = ValueType;
@@ -265,8 +258,8 @@ public:
     /**
      * @copydoc Sellp::val_at(size_type, size_type, size_type)
      */
-    value_type val_at(size_type row, size_type slice_set,
-                      size_type idx) const noexcept
+    value_type val_at(size_type row, size_type slice_set, size_type idx) const
+        noexcept
     {
         return values_
             .get_const_data()[this->linearize_index(row, slice_set, idx)];
@@ -293,8 +286,8 @@ public:
     /**
      * @copydoc Sellp::col_at(size_type, size_type, size_type)
      */
-    index_type col_at(size_type row, size_type slice_set,
-                      size_type idx) const noexcept
+    index_type col_at(size_type row, size_type slice_set, size_type idx) const
+        noexcept
     {
         return this
             ->get_const_col_idxs()[this->linearize_index(row, slice_set, idx)];

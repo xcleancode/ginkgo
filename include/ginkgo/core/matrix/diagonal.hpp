@@ -86,12 +86,6 @@ class Diagonal
 public:
     using EnableLinOp<Diagonal>::convert_to;
     using EnableLinOp<Diagonal>::move_to;
-    using ConvertibleTo<Csr<ValueType, int32>>::convert_to;
-    using ConvertibleTo<Csr<ValueType, int32>>::move_to;
-    using ConvertibleTo<Csr<ValueType, int64>>::convert_to;
-    using ConvertibleTo<Csr<ValueType, int64>>::move_to;
-    using ConvertibleTo<Diagonal<next_precision<ValueType>>>::convert_to;
-    using ConvertibleTo<Diagonal<next_precision<ValueType>>>::move_to;
 
     using value_type = ValueType;
     using index_type = int64;

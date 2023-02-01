@@ -99,8 +99,6 @@ class Vector
 public:
     using EnableDistributedLinOp<Vector>::convert_to;
     using EnableDistributedLinOp<Vector>::move_to;
-    using ConvertibleTo<Vector<next_precision<ValueType>>>::convert_to;
-    using ConvertibleTo<Vector<next_precision<ValueType>>>::move_to;
 
     using value_type = ValueType;
     using absolute_type = remove_complex<Vector>;
